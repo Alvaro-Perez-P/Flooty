@@ -10,7 +10,7 @@ if (!isset($_SESSION["usuario"])) {
     exit();
 }
 
-// Verificar rol (usuario o admin)
+// Verificar rol válido
 if (!isset($_SESSION["rol"]) || ($_SESSION["rol"] != "usuario" && $_SESSION["rol"] != "admin")) {
     header("location: sesion/login.php");
     exit();
@@ -26,7 +26,6 @@ $user_name = $user_info["usuario"];
 $user_rol = $user_info["rol"];
 ?>
 
-<h1 style="text-align:center; margin-top:20px;">Bienvenido a FLOOTY</h1>
 
 <!DOCTYPE html>
 <html lang="es">
@@ -37,12 +36,19 @@ $user_rol = $user_info["rol"];
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
+    <?php include __DIR__.'../nav_basico.php'; ?>
 
     <div class="container text-center mt-5">
         <h2>Hola <?= htmlspecialchars($user_name) ?> (<?= htmlspecialchars($user_rol) ?>)</h2>
 
         <div class="d-grid gap-3 col-6 mx-auto mt-4">
 
+            <!-- Botón SOLO para admin -->
+            <?php if($user_rol == "admin"): ?>
+                <a href="panel_admin.php" class="btn btn-warning">Panel Administrador</a>
+            <?php endif; ?>
+            
+          
             <a href="sesion/logout.php" class="btn btn-danger">Cerrar sesión</a>
 
         </div>
