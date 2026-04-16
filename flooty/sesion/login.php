@@ -1,5 +1,67 @@
 <?php
 session_start();
+
+error_reporting(E_ALL);
+ini_set("display_errors", 1);
+
+require "conexion.php";
+
+$mensaje = "";
+$err_email = "";
+$err_contrasena = "";
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
+    $tmp_email = trim($_POST["email"] ?? "");
+    $tmp_contrasena = trim($_POST["passw"] ?? "");
+
+    $errores = false;
+
+    if ($tmp_email == "") {
+        $err_email = "Introduce un email";
+        $errores = true;
+    } elseif (!filter_var($tmp_email, FILTER_VALIDATE_EMAIL)) {
+        $err_email = "El email debe tener un formato válido y contener @";
+        $errores = true;
+    } else {
+        $email = $tmp_email;
+    }
+
+    if ($tmp_contrasena == "") {
+        $err_contrasena = "Introduce una contraseña";
+        $errores = true;
+    } else {
+        $contrasena = $tmp_contrasena;
+    }
+
+    if (!$errores) {
+
+        $consulta = "SELECT * FROM usuarios WHERE email = '$email'";
+        $resultado = $_conexion->query($consulta);
+
+        if ($resultado->num_rows === 0) {
+            $mensaje = "El email no existe en la base de datos";
+        } else {
+            $user_info = $resultado->fetch_assoc();
+
+            $acceso_concedido = password_verify($contrasena, $user_info["clave"]);
+
+            if (!$acceso_concedido) {
+                $mensaje = "Contraseña incorrecta";
+            } else {
+                if ($user_info["rol"] != "usuario" && $user_info["rol"] != "admin") {
+                    $mensaje = "Acceso denegado. Solo pueden entrar usuarios o administradores";
+                } else {
+                    $_SESSION["usuario"] = $user_info["usuario"];
+                    $_SESSION["rol"] = $user_info["rol"];
+
+                    header("Location: ../index.php");
+                    exit();
+                }
+            }
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -9,146 +71,233 @@ session_start();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
 
-    <?php
-    error_reporting(E_ALL);
-    ini_set("display_errors", 1);
-    require "conexion.php";
-    ?>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, Helvetica, sans-serif;
+        }
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body style="background-color: #f5f5dc;">
+        body{
+            min-height: 100vh;
+            background-image: url("../img/fondo2.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
 
-<?php
-if($_SERVER["REQUEST_METHOD"] == "POST"){
+        .contenedor-principal{
+            width: 100%;
+            max-width: 1100px;
+            min-height: 650px;
+            display: flex;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.25);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            backdrop-filter: blur(3px);
+        }
 
-    $tmp_email = $_POST["email"];
-    $tmp_usuario = $_POST["usuario"];
-    $tmp_contrasena = $_POST["passw"];
+        .lado-izquierdo{
+            width: 50%;
+            padding: 60px 50px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.35);
+        }
 
-    $errores = false;
+        .lado-izquierdo p{
+            font-size: 20px;
+            line-height: 1.6;
+            max-width: 450px;
+        }
 
-    // =========================
-    // VALIDACIÓN DEL EMAIL
-    // =========================
-    $tmp_email = trim($tmp_email);
+        .lado-derecho{
+            width: 50%;
+            background: rgba(0, 0, 0, 0.65);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
 
-    if($tmp_email == ""){
-        $err_email = "Introduce un email";
-        $errores = true;
-    }elseif(!filter_var($tmp_email, FILTER_VALIDATE_EMAIL)){
-        $err_email = "El email debe tener un formato válido y contener @";
-        $errores = true;
-    }else{
-        $email = $tmp_email;
-    }
+        .caja-formulario{
+            width: 100%;
+            max-width: 360px;
+        }
 
-    // =========================
-    // VALIDACIÓN DEL USUARIO
-    // =========================
-    $tmp_usuario = trim($tmp_usuario);
+        .caja-formulario h2{
+            font-size: 48px;
+            margin-bottom: 35px;
+            font-weight: bold;
+        }
 
-    if($tmp_usuario == ""){
-        $err_usuario = "Introduce un usuario";
-        $errores = true;
-    }else{
-        $usuario = $tmp_usuario;
-    }
+        .grupo-input{
+            margin-bottom: 28px;
+        }
 
-    // =========================
-    // VALIDACIÓN DE CONTRASEÑA
-    // =========================
-    $tmp_contrasena = trim($tmp_contrasena);
+        .grupo-input label{
+            display: block;
+            margin-bottom: 10px;
+            font-size: 15px;
+            color: #d9d9d9;
+        }
 
-    if($tmp_contrasena == ""){
-        $err_contrasena = "Introduce una contraseña";
-        $errores = true;
-    }else{
-        $contrasena = $tmp_contrasena;
-    }
+        .grupo-input input{
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid rgba(255,255,255,0.35);
+            padding: 10px 2px;
+            color: white;
+            font-size: 16px;
+            outline: none;
+        }
 
-    // =========================
-    // CONSULTA A LA BASE DE DATOS
-    // =========================
-    if(!$errores){
+        .grupo-input input::placeholder{
+            color: rgba(255,255,255,0.7);
+        }
 
-        $consulta = "SELECT * FROM usuarios WHERE email = '$email' AND usuario = '$usuario'";
-        $resultado = $_conexion->query($consulta);
+        .grupo-input input:focus{
+            border-bottom: 2px solid #18a85b;
+        }
 
-        if($resultado->num_rows === 0){
-            echo "<div class='alert alert-danger text-center'>El usuario o el email no existen en la base de datos</div>";
-        }else{
-            $user_info = $resultado->fetch_assoc();
+        .boton-login{
+            width: 100%;
+            padding: 14px;
+            border: none;
+            background-color: #A8CA7E;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 15px;
+        }
 
-            $acceso_concedido = password_verify($contrasena, $user_info["clave"]);
+        .boton-login:hover{
+            background-color: #A8CA7E;
+        }
 
-            if(!$acceso_concedido){
-                echo "<div class='alert alert-danger text-center'>Contraseña incorrecta</div>";
-            }else{
+        .texto-abajo{
+            text-align: center;
+            margin-top: 25px;
+            font-size: 15px;
+            color: #d6d6d6;
+        }
 
-                // Validamos que solo entre el rol usuario o admin
-                if($user_info["rol"] != "usuario" && $user_info["rol"] != "admin"){
-                    echo "<div class='alert alert-danger text-center'>Acceso denegado. Solo pueden entrar usuarios o administradores</div>";
-                }else{
-                    $_SESSION["usuario"] = $user_info["usuario"];
-                    $_SESSION["rol"] = $user_info["rol"];
+        .texto-abajo a{
+            color: #A8CA7E;
+            text-decoration: none;
+            font-weight: bold;
+            margin-left: 8px;
+        }
 
-                    header("location: ../index.php");
-                    exit();
-                }
+        .texto-abajo a:hover{
+            text-decoration: underline;
+        }
+
+        .mensaje-error{
+            background-color: rgba(220, 53, 69, 0.92);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .mensaje-general{
+            background-color: rgba(220, 53, 69, 0.92);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .logo{
+            width: 120px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        @media(max-width: 900px){
+            .contenedor-principal{
+                flex-direction: column;
+                max-width: 500px;
+            }
+
+            .lado-izquierdo,
+            .lado-derecho{
+                width: 100%;
+            }
+
+            .lado-izquierdo{
+                min-height: 220px;
+            }
+
+            .caja-formulario h2{
+                font-size: 36px;
             }
         }
-    }
-}
-?>
+    </style>
+</head>
+<body>
 
-<div class="container d-flex justify-content-center align-items-center vh-100">
-    <div class="p-4 rounded shadow w-100" style="max-width: 400px; background-color: #198754;">
+<div class="contenedor-principal">
+    <div class="lado-izquierdo">
+        <img src="../img/logo.png" alt="logoFlooty" class="logo">
+        <p>
+            Aquí puedes iniciar sesión para acceder a tu cuenta, gestionar tus datos
+            y entrar en la plataforma.
+        </p>
+    </div>
 
-        <h2 class="text-center mb-4 text-white">Inicia sesión en FLOOTY</h2>
+    <div class="lado-derecho">
+        <div class="caja-formulario">
+            <h2>Login</h2>
 
-        <form action="" method="post">
+            <?php if ($mensaje != "") { ?>
+                <div class="mensaje-general"><?= $mensaje ?></div>
+            <?php } ?>
 
-            <div class="mb-3">
-                <label class="form-label text-white">Email</label>
-                <input type="text" name="email" class="form-control" placeholder="Introduce tu email">
-                <?php
-                    if(isset($err_email)){
-                        echo "<div class='alert alert-danger mt-2'>$err_email</div>";
-                    }
-                ?>
+            <form action="" method="post">
+
+                <div class="grupo-input">
+                    <label>Email</label>
+                    <input type="text" name="email" placeholder="Introduce tu email" value="<?= htmlspecialchars($_POST["email"] ?? "") ?>">
+                    <?php if ($err_email != "") { ?>
+                        <div class="mensaje-error"><?= $err_email ?></div>
+                    <?php } ?>
+                </div>
+
+                <div class="grupo-input">
+                    <label>Contraseña</label>
+                    <input type="password" name="passw" placeholder="Introduce tu contraseña">
+                    <?php if ($err_contrasena != "") { ?>
+                        <div class="mensaje-error"><?= $err_contrasena ?></div>
+                    <?php } ?>
+                </div>
+
+                <input type="submit" value="Iniciar sesión" class="boton-login">
+            </form>
+
+            <div class="texto-abajo">
+                ¿No tienes cuenta?
+                <a href="registro.php">Regístrate aquí</a>
             </div>
-
-            <div class="mb-3">
-                <label class="form-label text-white">Usuario</label>
-                <input type="text" name="usuario" class="form-control" placeholder="Introduce tu usuario">
-                <?php
-                    if(isset($err_usuario)){
-                        echo "<div class='alert alert-danger mt-2'>$err_usuario</div>";
-                    }
-                ?>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label text-white">Contraseña</label>
-                <input type="password" name="passw" class="form-control" placeholder="Introduce tu contraseña">
-                <?php
-                    if(isset($err_contrasena)){
-                        echo "<div class='alert alert-danger mt-2'>$err_contrasena</div>";
-                    }
-                ?>
-            </div>
-
-            <div class="mb-3">
-                <input type="submit" value="Iniciar sesión" class="btn w-100" style="background-color: #8b4513; color: white;">
-            </div>
-        </form>
-
-        <h5 class="text-center mt-4 mb-3 text-white">Si no tienes cuenta, regístrate aquí</h5>
-        <a href="registro.php" class="btn w-100" style="background-color: #8b4513; color: white;">Registrarse</a>
+        </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
