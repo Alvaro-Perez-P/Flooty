@@ -65,10 +65,16 @@ if (session_status() == PHP_SESSION_NONE) {
   </div>
 
   <div class="nav-right">
-    <?php if (isset($_SESSION["usuario"])): ?>
-      <a href="/flooty/crearProducto.php">Crear producto</a>
-      <a href="sesion/logout.php">Cerrar sesión</a>
-    <?php endif; ?>
-  </div>
+  <?php if (isset($_SESSION["usuario"])): ?>
+
+    <span style="color:#97B770; font-weight:bold;">
+      Hola <?= htmlspecialchars($_SESSION["usuario"]) ?>
+    </span>
+
+    <a href="/flooty/crearProducto.php">Crear producto</a>
+    <a href="sesion/logout.php">Cerrar sesión</a>
+
+  <?php endif; ?>
+</div>
 
 </nav>

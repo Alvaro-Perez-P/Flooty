@@ -1,5 +1,94 @@
 <?php
 session_start();
+
+error_reporting(E_ALL);
+ini_set("display_errors", 1);
+require "conexion.php";
+
+$err_nombre = "";
+$err_direc = "";
+$err_telf = "";
+$err_email = "";
+$err_passw = "";
+$err_passwConf = "";
+$mensaje = "";
+
+$nombre = "";
+$direc = "";
+$telf = "";
+$email = "";
+$rol = "usuario";
+
+if($_SERVER["REQUEST_METHOD"] == "POST"){
+
+    $nombre = trim($_POST["nombre"] ?? "");
+    $direc = trim($_POST["direccion"] ?? "");
+    $telf = trim($_POST["telefono"] ?? "");
+    $email = trim($_POST["email"] ?? "");
+    $passw = $_POST["passw"] ?? "";
+    $passwConf = $_POST["passwConf"] ?? "";
+    $rol = $_POST["rol"] ?? "usuario";
+
+    $errores = false;
+
+    if($nombre == ""){
+        $err_nombre = "Introduce tu nombre";
+        $errores = true;
+    }
+
+    if($direc == ""){
+        $err_direc = "Introduce una dirección";
+        $errores = true;
+    }
+
+    if($telf == ""){
+        $err_telf = "Introduce un teléfono";
+        $errores = true;
+    }
+
+    if($email == ""){
+        $err_email = "Introduce un email";
+        $errores = true;
+    }elseif(!filter_var($email, FILTER_VALIDATE_EMAIL)){
+        $err_email = "El email no tiene un formato válido";
+        $errores = true;
+    }
+
+    if($passw == ""){
+        $err_passw = "Introduce una contraseña";
+        $errores = true;
+    }elseif(strlen($passw) < 6){
+        $err_passw = "La contraseña debe tener al menos 6 caracteres";
+        $errores = true;
+    }
+
+    if($passwConf == ""){
+        $err_passwConf = "Confirma tu contraseña";
+        $errores = true;
+    }elseif($passwConf !== $passw){
+        $err_passwConf = "Las contraseñas no coinciden";
+        $errores = true;
+    }
+
+    if(!$errores){
+        $usuario = $nombre;
+        $clave = password_hash($passw, PASSWORD_DEFAULT);
+
+        $consulta = "INSERT INTO usuarios (email, usuario, clave, rol, nombre, telefono, direccion)
+                     VALUES ('$email','$usuario','$clave','$rol','$nombre','$telf','$direc')";
+
+        if($_conexion->query($consulta)){
+            $mensaje = "Usuario registrado correctamente";
+            $nombre = "";
+            $direc = "";
+            $telf = "";
+            $email = "";
+            $rol = "usuario";
+        }else{
+            $mensaje = "Error al registrar el usuario";
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -8,12 +97,6 @@ session_start();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro</title>
-
-    <?php
-    error_reporting(E_ALL);
-    ini_set("display_errors", 1);
-    require "conexion.php";
-    ?>
 
     <style>
         *{
@@ -95,7 +178,8 @@ session_start();
             color: #d9d9d9;
         }
 
-        .grupo-input input, .grupo-input select{
+        .grupo-input input,
+        .grupo-input select{
             width: 100%;
             background: transparent;
             border: none;
@@ -110,7 +194,8 @@ session_start();
             color: rgba(255,255,255,0.7);
         }
 
-        .grupo-input input:focus{
+        .grupo-input input:focus,
+        .grupo-input select:focus{
             border-bottom: 2px solid #18a85b;
         }
 
@@ -150,6 +235,15 @@ session_start();
             font-size: 13px;
         }
 
+        .mensaje-ok{
+            background-color: rgba(40, 167, 69, 0.92);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
         .logo{
             width: 120px;
             margin-bottom: 20px;
@@ -170,29 +264,10 @@ session_start();
 </head>
 <body>
 
-<?php
-if($_SERVER["REQUEST_METHOD"] == "POST"){
-
-    $email = $_POST["email"];
-    $usuario = $_POST["usuario"];
-    $passw = $_POST["passw"];
-    $rol = $_POST["rol"];
-
-    $clave = password_hash($passw, PASSWORD_DEFAULT);
-
-    $consulta = "INSERT INTO users (email, usuario, clave, rol)
-                 VALUES ('$email','$usuario','$clave','$rol')";
-
-    $_conexion->query($consulta);
-
-    echo "<div class='mensaje-error'>Usuario registrado correctamente</div>";
-}
-?>
-
 <div class="contenedor-principal">
 
     <div class="lado-izquierdo">
-        <img src="../img/logo.png" class="logo">
+        <img src="../img/logo.png" class="logo" alt="logo">
         <p>
             Regístrate para crear una cuenta y acceder a todas las funcionalidades
             de la plataforma.
@@ -204,28 +279,53 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 
             <h2>Registro</h2>
 
+            <?php if($mensaje != ""): ?>
+                <div class="mensaje-ok"><?= $mensaje ?></div>
+            <?php endif; ?>
+
             <form method="post">
 
                 <div class="grupo-input">
-                    <label>Email</label>
-                    <input type="text" name="email">
+                    <label>Nombre</label>
+                    <input type="text" name="nombre" value="<?= htmlspecialchars($nombre) ?>">
+                    <?php if($err_nombre != "") echo "<div class='mensaje-error'>$err_nombre</div>"; ?>
                 </div>
 
                 <div class="grupo-input">
-                    <label>Usuario</label>
-                    <input type="text" name="usuario">
+                    <label>Dirección</label>
+                    <input type="text" name="direccion" value="<?= htmlspecialchars($direc) ?>">
+                    <?php if($err_direc != "") echo "<div class='mensaje-error'>$err_direc</div>"; ?>
+                </div>
+
+                <div class="grupo-input">
+                    <label>Teléfono</label>
+                    <input type="text" name="telefono" value="<?= htmlspecialchars($telf) ?>">
+                    <?php if($err_telf != "") echo "<div class='mensaje-error'>$err_telf</div>"; ?>
+                </div>
+
+                <div class="grupo-input">
+                    <label>Email</label>
+                    <input type="text" name="email" value="<?= htmlspecialchars($email) ?>">
+                    <?php if($err_email != "") echo "<div class='mensaje-error'>$err_email</div>"; ?>
                 </div>
 
                 <div class="grupo-input">
                     <label>Contraseña</label>
                     <input type="password" name="passw">
+                    <?php if($err_passw != "") echo "<div class='mensaje-error'>$err_passw</div>"; ?>
+                </div>
+
+                <div class="grupo-input">
+                    <label>Confirmar contraseña</label>
+                    <input type="password" name="passwConf">
+                    <?php if($err_passwConf != "") echo "<div class='mensaje-error'>$err_passwConf</div>"; ?>
                 </div>
 
                 <div class="grupo-input">
                     <label>Rol</label>
                     <select name="rol">
-                        <option value="usuario">usuario</option>
-                        <option value="admin">admin</option>
+                        <option value="usuario" <?= $rol == "usuario" ? "selected" : "" ?>>usuario</option>
+                        <option value="admin" <?= $rol == "admin" ? "selected" : "" ?>>admin</option>
                     </select>
                 </div>
 

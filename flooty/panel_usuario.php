@@ -110,7 +110,6 @@ $user_name = $user_info["usuario"];
 
     <div class="container mt-5">
         <div class="card shadow p-4">
-            <h2 class="mb-4">Hola <?= htmlspecialchars($user_name) ?></h2>
 
             <div class="list-group">
                 <a href="#" class="list-group-item list-group-item-action">Mis reservas</a>

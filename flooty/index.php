@@ -135,8 +135,6 @@ $user_rol = $user_info["rol"];
     <?php include __DIR__.'/nav_basico.php'; ?>
 
     <div class="container text-center mt-5">
-        <h2>Hola <?= htmlspecialchars($user_name) ?> (<?= htmlspecialchars($user_rol) ?>)</h2>
-
         <div class="d-grid gap-3 col-6 mx-auto mt-4">
 
             <?php if($user_rol == "admin"): ?>
@@ -144,7 +142,6 @@ $user_rol = $user_info["rol"];
             <?php endif; ?>
 
             <a href="panel_usuario.php" class="btn btn-primary">Panel Usuario</a>
-            <a href="sesion/logout.php" class="btn btn-danger">Cerrar sesión</a>
 
         </div>
     </div>
