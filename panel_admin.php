@@ -25,7 +25,7 @@ ini_set("display_errors", 1);
 <main class="container">
   <h2>Panel administrador</h2>
   <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
-    <a class="card" href="#"><div class="p"><strong>Usuarios</strong></div></a>
+    <a class="card" href="crear_usuario.php"><div class="p"><strong>Usuarios</strong></div></a>
     <a class="card" href="#"><div class="p"><strong>Anuncios</strong></div></a>
     <a class="card" href="#"><div class="p"><strong>Reservas</strong></div></a>
     <a class="card" href="#"><div class="p"><strong>Categorias</strong></div></a>
