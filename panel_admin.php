@@ -21,7 +21,7 @@ ini_set("display_errors", 1);
 
 <body>
   
-<?php include __DIR__.'../nav_basico.php'; ?>
+<?php include __DIR__.'/nav_basico.php'; ?>
 <main class="container">
   <h2>Panel administrador</h2>
   <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
