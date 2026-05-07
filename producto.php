@@ -754,13 +754,23 @@ if (!is_array($imagenes) || count($imagenes) === 0) {
             const json = await resp.json();
 
             if (json.ok) {
-                btn.textContent = "✅ Reserva enviada";
+                btn.textContent = "Ir al pago";
                 mostrarFeedback(true,
-                    "✅ <strong>¡Reserva solicitada!</strong><br>" +
-                    "Días: <strong>" + json.dias + "</strong> &nbsp;|&nbsp; " +
-                    "Total: <strong>" + formatearEuros(json.total) + "</strong><br>" +
-                    "<small style='color:#666'>El propietario revisará tu solicitud pronto.</small>"
+                    "✅ <strong>Reserva creada.</strong><br>" +
+                    "Ahora te redirigimos a la pasarela de pago…"
                 );
+
+                // Redirección a la pasarela de pago
+                if (json.id_reserva) {
+                    setTimeout(() => {
+                        window.location.href = "pago.php?id_reserva=" + encodeURIComponent(json.id_reserva);
+                    }, 700);
+                } else {
+                    // Fallback: si por algún motivo no llega el id, mostramos mensaje
+                    btn.disabled = false;
+                    btn.textContent = "Solicitar reserva";
+                    mostrarFeedback(false, "❌ No se pudo iniciar el pago (id de reserva no recibido).");
+                }
             } else {
                 btn.disabled    = false;
                 btn.textContent = "Solicitar reserva";
