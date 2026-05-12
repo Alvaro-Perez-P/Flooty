@@ -16,8 +16,12 @@ $usuario = $_conexion->real_escape_string($_SESSION["usuario"]);
 
 $consulta_usuario = "SELECT id, rol FROM usuarios WHERE usuario = '$usuario' LIMIT 1";
 $resultado_usuario = $_conexion->query($consulta_usuario);
-$user = $resultado_usuario->fetch_assoc();
 
+if (!$resultado_usuario || $resultado_usuario->num_rows == 0) {
+    die("Error: usuario no encontrado.");
+}
+
+$user = $resultado_usuario->fetch_assoc();
 $id_usuario = (int)$user["id"];
 
 /* Eliminar producto */
@@ -26,7 +30,7 @@ if (isset($_GET["eliminar"])) {
 
     $_conexion->query("DELETE FROM productos WHERE id = $id_producto AND id_usuario = $id_usuario");
 
-    header("location: mis-productos.php");
+    header("location: mis_productos.php");
     exit();
 }
 
@@ -34,18 +38,19 @@ if (isset($_GET["eliminar"])) {
 if (isset($_GET["cambiar_estado"])) {
     $id_producto = (int)$_GET["cambiar_estado"];
 
-    $consulta_estado = "SELECT estado FROM productos WHERE id = $id_producto AND id_usuario = $id_usuario";
+    $consulta_estado = "SELECT estado FROM productos WHERE id = $id_producto AND id_usuario = $id_usuario LIMIT 1";
     $resultado_estado = $_conexion->query($consulta_estado);
 
     if ($resultado_estado && $resultado_estado->num_rows > 0) {
         $producto_estado = $resultado_estado->fetch_assoc();
 
-        $nuevo_estado = ($producto_estado["estado"] == "activo") ? "pausado" : "activo";
+        $estado_actual = $producto_estado["estado"] ?? "activo";
+        $nuevo_estado = ($estado_actual == "activo") ? "pausado" : "activo";
 
         $_conexion->query("UPDATE productos SET estado = '$nuevo_estado' WHERE id = $id_producto AND id_usuario = $id_usuario");
     }
 
-    header("location: mis-productos.php");
+    header("location: mis_productos.php");
     exit();
 }
 
@@ -172,6 +177,9 @@ $resultado_productos = $_conexion->query($consulta_productos);
             font-size: 14px;
             text-align: center;
             font-weight: bold;
+            border: none;
+            cursor: pointer;
+            display: block;
         }
 
         .btn-editar {
@@ -234,7 +242,7 @@ $resultado_productos = $_conexion->query($consulta_productos);
 
         <?php while ($producto = $resultado_productos->fetch_assoc()): ?>
             <?php
-                $imagenes = json_decode($producto["imagenes"], true);
+                $imagenes = json_decode($producto["imagenes"] ?? "[]", true);
                 $imagen = "imagenes/default.jpg";
 
                 if (is_array($imagenes) && count($imagenes) > 0 && !empty($imagenes[0])) {
@@ -266,16 +274,16 @@ $resultado_productos = $_conexion->query($consulta_productos);
                 </div>
 
                 <div class="acciones">
-                    <a class="btn-accion btn-editar" href="editar-producto.php?id=<?= $producto["id"] ?>">
+                    <a class="btn-accion btn-editar" href="editar_producto.php?id=<?= (int)$producto["id"] ?>">
                         Editar
                     </a>
 
-                    <a class="btn-accion btn-pausar" href="mis-productos.php?cambiar_estado=<?= $producto["id"] ?>">
+                    <a class="btn-accion btn-pausar" href="mis_productos.php?cambiar_estado=<?= (int)$producto["id"] ?>">
                         <?= $estado == "activo" ? "Pausar" : "Activar" ?>
                     </a>
 
                     <a class="btn-accion btn-eliminar"
-                       href="mis-productos.php?eliminar=<?= $producto["id"] ?>"
+                       href="mis_productos.php?eliminar=<?= (int)$producto["id"] ?>"
                        onclick="return confirm('¿Seguro que quieres eliminar este producto?');">
                         Eliminar
                     </a>

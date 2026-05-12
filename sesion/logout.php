@@ -8,6 +8,6 @@ $_SESSION = [];
 session_destroy();
 
 // Redirigir al index
-header("Location: login.php"); // en caso de que tengamos el boton de inicio de 
+header("Location: ../index.php"); // en caso de que tengamos el boton de inicio de 
                                //  sesion en el index.php debe redireccionar ahi. 
 exit();

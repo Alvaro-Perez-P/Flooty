@@ -6,10 +6,12 @@ ini_set("display_errors", 1);
 
 require 'sesion/conexion.php';
 
+
 $esta_logueado = false;
 $user_name = "";
 $user_rol = "";
 $id_usuario = 0;
+$user_info = [];
 $favoritos_usuario = [];
 
 /* COMPROBAR SI ESTÁ LOGUEADO */
@@ -18,21 +20,20 @@ if (
     isset($_SESSION["rol"]) &&
     ($_SESSION["rol"] == "usuario" || $_SESSION["rol"] == "admin")
 ) {
-    $esta_logueado = true;
-
-    $usuario_sesion = $_SESSION["usuario"];
-    $usuario_sesion_seguro = $_conexion->real_escape_string($usuario_sesion);
+    $usuario_sesion_seguro = $_conexion->real_escape_string($_SESSION["usuario"]);
 
     $consulta_usuario = "SELECT * FROM usuarios WHERE usuario = '$usuario_sesion_seguro' LIMIT 1";
     $resultado_usuario = $_conexion->query($consulta_usuario);
 
     if ($resultado_usuario && $resultado_usuario->num_rows > 0) {
         $user_info = $resultado_usuario->fetch_assoc();
-        $user_name = $user_info["usuario"];
-        $user_rol = $user_info["rol"];
-        $id_usuario = (int)$user_info["id"];
-    } else {
-        $esta_logueado = false;
+
+        if (!isset($user_info["activo"]) || (int)$user_info["activo"] === 1) {
+            $esta_logueado = true;
+            $user_name = $user_info["usuario"];
+            $user_rol = $user_info["rol"];
+            $id_usuario = (int)$user_info["id"];
+        }
     }
 }
 
@@ -40,32 +41,43 @@ if (
 if (isset($_GET["favorito"])) {
 
     if (!$esta_logueado) {
-        header("location: sesion/login.php");
+        header("location: sesion/index.php");
         exit();
     }
 
     $id_producto_favorito = (int)$_GET["favorito"];
 
-    $consulta_favorito = "SELECT * FROM favoritos 
-                          WHERE id_usuario = $id_usuario 
-                          AND id_producto = $id_producto_favorito";
+    $consulta_favorito = "
+        SELECT id 
+        FROM favoritos 
+        WHERE id_usuario = $id_usuario 
+        AND id_producto = $id_producto_favorito
+        LIMIT 1
+    ";
     $resultado_favorito = $_conexion->query($consulta_favorito);
 
     if ($resultado_favorito && $resultado_favorito->num_rows > 0) {
-        $_conexion->query("DELETE FROM favoritos 
-                           WHERE id_usuario = $id_usuario 
-                           AND id_producto = $id_producto_favorito");
+        $_conexion->query("
+            DELETE FROM favoritos 
+            WHERE id_usuario = $id_usuario 
+            AND id_producto = $id_producto_favorito
+        ");
     } else {
-        $_conexion->query("INSERT INTO favoritos (id_usuario, id_producto)
-                           VALUES ($id_usuario, $id_producto_favorito)");
+        $_conexion->query("
+            INSERT INTO favoritos (id_usuario, id_producto)
+            VALUES ($id_usuario, $id_producto_favorito)
+        ");
     }
 
-    $limite_redireccion = isset($_GET["limite"]) ? (int)$_GET["limite"] : 6;
-    header("location: index.php?limite=" . $limite_redireccion);
+    $params = $_GET;
+    unset($params["favorito"]);
+    $query = http_build_query($params);
+
+    header("location: index.php" . ($query ? "?" . $query : ""));
     exit();
 }
 
-/* CANTIDAD DE PRODUCTOS */
+/* FILTROS */
 $limite = isset($_GET["limite"]) ? (int)$_GET["limite"] : 6;
 
 if ($limite < 6) {
@@ -74,25 +86,83 @@ if ($limite < 6) {
 
 $siguiente_limite = $limite * 2;
 
-/* TOTAL PRODUCTOS */
-$consulta_total = "SELECT COUNT(*) AS total FROM productos";
+$categoria = isset($_GET["categoria"]) ? (int)$_GET["categoria"] : 0;
+$precio_orden = $_GET["precio"] ?? "";
+$disponible_hoy = isset($_GET["disponible_hoy"]) ? 1 : 0;
+
+$where = [];
+$where[] = "p.estado = 'activo'";
+
+if ($categoria > 0) {
+    $where[] = "p.id_categoria = $categoria";
+}
+
+if ($disponible_hoy == 1) {
+    $hoy = date("Y-m-d");
+
+    $where[] = "
+        p.id NOT IN (
+            SELECT r.id_producto
+            FROM reservas r
+            WHERE r.estado IN ('pendiente', 'aceptada')
+            AND r.fecha_inicio <= '$hoy'
+            AND r.fecha_fin >= '$hoy'
+        )
+    ";
+}
+
+$where_sql = "WHERE " . implode(" AND ", $where);
+
+$order_sql = "ORDER BY p.fecha_creacion DESC, p.id DESC";
+
+if ($precio_orden == "menor") {
+    $order_sql = "ORDER BY p.precio_dia ASC";
+}
+
+if ($precio_orden == "mayor") {
+    $order_sql = "ORDER BY p.precio_dia DESC";
+}
+
+/* CATEGORÍAS */
+$categorias = [];
+$consulta_categorias = "SELECT id, nombre FROM categorias ORDER BY nombre ASC";
+$resultado_categorias = $_conexion->query($consulta_categorias);
+
+if ($resultado_categorias && $resultado_categorias->num_rows > 0) {
+    while ($fila_categoria = $resultado_categorias->fetch_assoc()) {
+        $categorias[] = $fila_categoria;
+    }
+}
+
+/* TOTAL PRODUCTOS FILTRADOS */
+$consulta_total = "
+    SELECT COUNT(*) AS total 
+    FROM productos p
+    LEFT JOIN categorias c ON p.id_categoria = c.id
+    $where_sql
+";
 $resultado_total = $_conexion->query($consulta_total);
 $fila_total = $resultado_total->fetch_assoc();
 $total_productos = (int)$fila_total["total"];
 
-/* PRODUCTOS */
+/* PRODUCTOS FILTRADOS */
 $consulta_productos = "
     SELECT p.*, c.nombre AS nombre_categoria
     FROM productos p
     LEFT JOIN categorias c ON p.id_categoria = c.id
-    ORDER BY p.fecha_creacion DESC, p.id DESC
+    $where_sql
+    $order_sql
     LIMIT $limite
 ";
 $resultado_productos = $_conexion->query($consulta_productos);
 
 /* FAVORITOS DEL USUARIO */
 if ($esta_logueado) {
-    $consulta_favoritos_usuario = "SELECT id_producto FROM favoritos WHERE id_usuario = $id_usuario";
+    $consulta_favoritos_usuario = "
+        SELECT id_producto 
+        FROM favoritos 
+        WHERE id_usuario = $id_usuario
+    ";
     $resultado_favoritos_usuario = $_conexion->query($consulta_favoritos_usuario);
 
     if ($resultado_favoritos_usuario && $resultado_favoritos_usuario->num_rows > 0) {
@@ -101,8 +171,17 @@ if ($esta_logueado) {
         }
     }
 }
-?>
 
+$params_mas = $_GET;
+$params_mas["limite"] = $siguiente_limite;
+$url_mas = "index.php?" . http_build_query($params_mas);
+
+$avatar_usuario = "imagenes/avatar.jpg";
+
+if ($esta_logueado && !empty($user_info["imagen"])) {
+    $avatar_usuario = $user_info["imagen"];
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -171,6 +250,7 @@ if ($esta_logueado) {
             border-radius: 50%;
             object-fit: cover;
             margin-right: 10px;
+            background: white;
         }
 
         .titulo-usuario {
@@ -250,6 +330,7 @@ if ($esta_logueado) {
             background: #fff;
             color: #333;
             outline: none;
+            margin-bottom: 10px;
         }
 
         .filtros-lista {
@@ -268,6 +349,29 @@ if ($esta_logueado) {
 
         .filtro-item input[type="checkbox"] {
             accent-color: #97B770;
+        }
+
+        .btn-filtrar {
+            width: 100%;
+            background: #97B770;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-limpiar {
+            display: block;
+            width: 100%;
+            background: #8c8c8c;
+            color: white;
+            text-decoration: none;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: bold;
+            text-align: center;
         }
 
         .productos-container {
@@ -295,6 +399,7 @@ if ($esta_logueado) {
             overflow: hidden;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
             transition: 0.3s;
+            cursor: pointer;
         }
 
         .tarjeta-producto:hover {
@@ -304,7 +409,8 @@ if ($esta_logueado) {
         .imagen-producto {
             width: 100%;
             height: 180px;
-            background-color: #ddd;
+            background-color: #e8e3d8;
+            overflow: hidden;
         }
 
         .imagen-producto img {
@@ -312,6 +418,15 @@ if ($esta_logueado) {
             height: 100%;
             object-fit: cover;
             display: block;
+        }
+
+        .img-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e8e3d8;
         }
 
         .contenido-producto {
@@ -522,183 +637,224 @@ if ($esta_logueado) {
 
 <body>
 
-     <?php include __DIR__ . '/nav_basico.php'; ?>
+<?php include __DIR__ . '/nav_basico.php'; ?>
+<?php include __DIR__ . "/chatbot_flooty_animado.php"; ?>
 
-    <div class="contenedor-main">
+<div class="contenedor-main">
 
-        <div class="columna-izquierda">
+    <div class="columna-izquierda">
 
-            <?php if ($esta_logueado): ?>
-                <div class="profile-info">
-                    <div class="titulo-usuario">
-                        <img class="img-avatar" src="imagenes/avatar.jpg" alt="foto perfil">
-                        <?= htmlspecialchars($user_name) ?>
-                    </div>
-
-                    <div class="stars">
-                        ★ ★ ★ ★ ★ <span>(35)</span>
-                    </div>
-
-                    <small>En Flooty desde 2026</small>
+        <?php if ($esta_logueado): ?>
+            <div class="profile-info">
+                <div class="titulo-usuario">
+                    <img class="img-avatar"
+                         src="<?= htmlspecialchars($avatar_usuario) ?>"
+                         alt="avatar"
+                         onerror="this.src='imagenes/avatar.jpg'">
+                    <?= htmlspecialchars($user_name) ?>
                 </div>
 
-                <div class="menu-container">
-                    <div class="list-group">
-                        <a href="#" class="list-group-item">Mis reservas</a>
-                        <a href="#" class="list-group-item">Reservas recibidas</a>
-                        <a href="mis_productos.php" class="list-group-item">Mis anuncios</a>
-                        <a href="#" class="list-group-item">Mis datos</a>
-                        <a href="favoritos.php" class="list-group-item">Favoritos</a>
-                    </div>
-
-                    <?php if ($user_rol == "admin"): ?>
-                        <a href="panel_admin.php" class="btn btn-warning">Panel Administrador</a>
-                    <?php endif; ?>
+                <div class="stars">
+                    ★ ★ ★ ★ ★ <span>(35)</span>
                 </div>
-            <?php endif; ?>
 
-            <div class="categorias-container">
-                <div class="titulo-bloque">Categorías</div>
-                <select class="categorias-select">
-                    <option selected>Selecciona categoría</option>
-                </select>
+                <small>En Flooty desde 2026</small>
             </div>
 
-            <div class="filtros-container">
-                <div class="titulo-bloque">Filtros</div>
+            <div class="menu-container">
+                <div class="list-group">
+                    <a href="mis_reservas.php" class="list-group-item">Mis reservas</a>
+                    <a href="reservas_recibidas.php" class="list-group-item">Reservas recibidas</a>
+                    <a href="mis_productos.php" class="list-group-item">Mis anuncios</a>
+                    <a href="mis_datos.php" class="list-group-item">Mis datos</a>
+                    <a href="favoritos.php" class="list-group-item">Favoritos</a>
+                </div>
+
+                <?php if ($user_rol == "admin"): ?>
+                    <a href="panel_admin.php" class="btn btn-warning">Panel Administrador</a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="categorias-container">
+            <div class="titulo-bloque">Categorías</div>
+
+            <form method="GET" action="index.php">
+                <select name="categoria" class="categorias-select">
+                    <option value="0">Todas las categorías</option>
+
+                    <?php foreach ($categorias as $cat): ?>
+                        <option value="<?= (int)$cat["id"] ?>" <?= $categoria == (int)$cat["id"] ? "selected" : "" ?>>
+                            <?= htmlspecialchars($cat["nombre"]) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <input type="hidden" name="precio" value="<?= htmlspecialchars($precio_orden) ?>">
+
+                <?php if ($disponible_hoy): ?>
+                    <input type="hidden" name="disponible_hoy" value="1">
+                <?php endif; ?>
+
+                <button type="submit" class="btn-filtrar">Filtrar categoría</button>
+            </form>
+        </div>
+
+        <div class="filtros-container">
+            <div class="titulo-bloque">Filtros</div>
+
+            <form method="GET" action="index.php">
+                <input type="hidden" name="categoria" value="<?= (int)$categoria ?>">
 
                 <div class="filtros-lista">
                     <label class="filtro-item">
-                        <input type="checkbox">
+                        <input type="checkbox" name="disponible_hoy" value="1" <?= $disponible_hoy ? "checked" : "" ?>>
                         Disponible hoy
                     </label>
 
-                    <label class="filtro-item">
-                        <input type="checkbox">
-                        Solo con envío
-                    </label>
-
-                    <label class="filtro-item">
-                        <input type="checkbox">
-                        Mejor valorados
-                    </label>
-
-                    <select class="filtro-select">
-                        <option selected>Precio</option>
-                        <option>Menor a mayor</option>
-                        <option>Mayor a menor</option>
+                    <select name="precio" class="filtro-select">
+                        <option value="" <?= $precio_orden == "" ? "selected" : "" ?>>Precio</option>
+                        <option value="menor" <?= $precio_orden == "menor" ? "selected" : "" ?>>Menor a mayor</option>
+                        <option value="mayor" <?= $precio_orden == "mayor" ? "selected" : "" ?>>Mayor a menor</option>
                     </select>
 
-                    <select class="filtro-select">
-                        <option selected>Distancia</option>
-                        <option>Menos de 5 km</option>
-                        <option>Menos de 10 km</option>
-                        <option>Menos de 20 km</option>
-                    </select>
+                    <button type="submit" class="btn-filtrar">Aplicar filtros</button>
+                    <a href="index.php" class="btn-limpiar">Limpiar filtros</a>
                 </div>
-            </div>
-        </div>
-
-        <div class="productos-container">
-            <div class="titulo-seccion">Últimos productos publicados</div>
-
-            <div class="productos-grid">
-                <?php if ($resultado_productos && $resultado_productos->num_rows > 0): ?>
-                    <?php while ($producto = $resultado_productos->fetch_assoc()): ?>
-                        <?php
-                        $imagenes = json_decode($producto["imagenes"], true);
-                        $primera_imagen = "imagenes/default.jpg";
-
-                        if (is_array($imagenes) && count($imagenes) > 0 && !empty($imagenes[0])) {
-                            $primera_imagen = $imagenes[0];
-                        }
-
-                        $es_favorito = $esta_logueado && in_array((int)$producto["id"], $favoritos_usuario);
-                        ?>
-
-                        <div class="tarjeta-producto">
-                            <div class="imagen-producto">
-                                <img src="<?= htmlspecialchars($primera_imagen) ?>" alt="<?= htmlspecialchars($producto["titulo"]) ?>">
-                            </div>
-
-                            <div class="contenido-producto">
-                                <span class="categoria-producto">
-                                    <?= htmlspecialchars($producto["nombre_categoria"] ?? "Sin categoría") ?>
-                                </span>
-
-                                <h3><?= htmlspecialchars($producto["titulo"]) ?></h3>
-
-                                <p><?= htmlspecialchars($producto["descripcion"]) ?></p>
-
-                                <div class="precio">
-                                    <?= number_format((float)$producto["precio_dia"], 2, ",", ".") ?> €/día
-                                </div>
-
-                                <div class="acciones-producto">
-                                    <?php if ($esta_logueado): ?>
-                                        <a href="index.php?favorito=<?= $producto["id"] ?>&limite=<?= $limite ?>" class="btn-like <?= $es_favorito ? 'activo' : '' ?>">👍</a>
-                                    <?php else: ?>
-                                        <a href="sesion/login.php" class="btn-like">👍</a>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endwhile; ?>
-                <?php else: ?>
-                    <div class="mensaje-vacio">Todavía no hay productos publicados.</div>
-                <?php endif; ?>
-            </div>
-
-            <?php if ($total_productos > $limite): ?>
-                <div class="contenedor-boton-mas">
-                    <a href="index.php?limite=<?= $siguiente_limite ?>" class="btn-mostrar-mas">Cargar más</a>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <div class="publicidad-container">
-            <div class="slide active">
-                <img src="imagenes/banner1.png" alt="banner 1">
-            </div>
-
-            <div class="slide">
-                <img src="imagenes/banner2.png" alt="banner 2">
-            </div>
-
-            <div class="slide">
-                <img src="imagenes/banner3.png" alt="banner 3">
-            </div>
+            </form>
         </div>
 
     </div>
 
-    <footer class="footer-container">
-        <div class="footer-contenido">
-            <div class="footer-logo">FLOOTY</div>
+    <div class="productos-container">
+        <div class="titulo-seccion">Últimos productos publicados</div>
 
-            <div class="footer-texto">
-                © 2026 Flooty. Plataforma de alquiler entre personas.
-            </div>
+        <div class="productos-grid">
+            <?php if ($resultado_productos && $resultado_productos->num_rows > 0): ?>
+                <?php while ($producto = $resultado_productos->fetch_assoc()): ?>
+                    <?php
+                    $imagenes = json_decode($producto["imagenes"], true);
+                    $primera_imagen = "";
 
-            <div class="footer-links">
-                <a href="#">Aviso legal</a>
-                <a href="#">Privacidad</a>
-                <a href="#">Contacto</a>
-                <a href="#">Ayuda</a>
-            </div>
+                    if (is_array($imagenes) && count($imagenes) > 0 && !empty($imagenes[0])) {
+                        $primera_imagen = $imagenes[0];
+                    }
+
+                    $es_favorito = $esta_logueado && in_array((int)$producto["id"], $favoritos_usuario);
+
+                    $params_fav = $_GET;
+                    $params_fav["favorito"] = (int)$producto["id"];
+                    $url_favorito = "index.php?" . http_build_query($params_fav);
+                    ?>
+
+                    <div class="tarjeta-producto" onclick="window.location='producto.php?id=<?= (int)$producto["id"] ?>'">
+                        <div class="imagen-producto">
+                            <?php if ($primera_imagen): ?>
+                                <img src="<?= htmlspecialchars($primera_imagen) ?>"
+                                     alt="<?= htmlspecialchars($producto["titulo"]) ?>"
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+
+                                <div class="img-placeholder" style="display:none;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <polyline points="21 15 16 10 5 21"/>
+                                    </svg>
+                                </div>
+                            <?php else: ?>
+                                <div class="img-placeholder">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <polyline points="21 15 16 10 5 21"/>
+                                    </svg>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="contenido-producto">
+                            <span class="categoria-producto">
+                                <?= htmlspecialchars($producto["nombre_categoria"] ?? "Sin categoría") ?>
+                            </span>
+
+                            <h3><?= htmlspecialchars($producto["titulo"]) ?></h3>
+
+                            <p><?= htmlspecialchars($producto["descripcion"]) ?></p>
+
+                            <div class="precio">
+                                <?= number_format((float)$producto["precio_dia"], 2, ",", ".") ?> €/día
+                            </div>
+
+                            <div class="acciones-producto">
+                                <?php if ($esta_logueado): ?>
+                                    <a href="<?= htmlspecialchars($url_favorito) ?>"
+                                       class="btn-like <?= $es_favorito ? 'activo' : '' ?>"
+                                       onclick="event.stopPropagation()">
+                                        <?= $es_favorito ? '❤️' : '🤍' ?>
+                                    </a>
+                                <?php else: ?>
+                                    <a href="sesion/login.php" class="btn-like" onclick="event.stopPropagation()">🤍</a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
+                <?php endwhile; ?>
+            <?php else: ?>
+                <div class="mensaje-vacio">No hay productos con esos filtros.</div>
+            <?php endif; ?>
         </div>
-    </footer>
 
-    <script>
-        let slides = document.querySelectorAll(".slide");
-        let index = 0;
+        <?php if ($total_productos > $limite): ?>
+            <div class="contenedor-boton-mas">
+                <a href="<?= htmlspecialchars($url_mas) ?>" class="btn-mostrar-mas">Cargar más</a>
+            </div>
+        <?php endif; ?>
+    </div>
 
-        setInterval(() => {
-            slides[index].classList.remove("active");
-            index = (index + 1) % slides.length;
-            slides[index].classList.add("active");
-        }, 2000);
-    </script>
+    <div class="publicidad-container">
+        <div class="slide active">
+            <img src="imagenes/banner1.png" alt="banner 1">
+        </div>
+
+        <div class="slide">
+            <img src="imagenes/banner2.png" alt="banner 2">
+        </div>
+
+        <div class="slide">
+            <img src="imagenes/banner3.png" alt="banner 3">
+        </div>
+    </div>
+
+</div>
+
+<footer class="footer-container">
+    <div class="footer-contenido">
+        <div class="footer-logo">FLOOTY</div>
+
+        <div class="footer-texto">
+            © 2026 Flooty. Plataforma de alquiler de objetos.
+        </div>
+
+        <div class="footer-links">
+            <a href="#">Aviso legal</a>
+            <a href="#">Privacidad</a>
+            <a href="#">Contacto</a>
+            <a href="#">Ayuda</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+    let slides = document.querySelectorAll(".slide");
+    let index = 0;
+
+    setInterval(() => {
+        slides[index].classList.remove("active");
+        index = (index + 1) % slides.length;
+        slides[index].classList.add("active");
+    }, 2000);
+</script>
 
 </body>
 </html>

@@ -17,7 +17,7 @@ if (!isset($_SESSION["rol"]) || $_SESSION["rol"] != "admin") {
 require "sesion/conexion.php";
 
 if (!isset($_GET["id"])) {
-    header("location: listado_usuarios.php");
+    header("location: panel_usuarios.php");
     exit();
 }
 
@@ -27,7 +27,7 @@ $consulta = "SELECT * FROM usuarios WHERE id = '$id'";
 $resultado = $_conexion->query($consulta);
 
 if ($resultado->num_rows === 0) {
-    header("location: listado_usuarios.php");
+    header("location: panel_usuarios.php");
     exit();
 }
 
@@ -42,7 +42,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $errores = false;
 
-    // VALIDACIÓN EMAIL
     $tmp_email = trim($tmp_email);
 
     if ($tmp_email == "") {
@@ -55,7 +54,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $email = $tmp_email;
     }
 
-    // VALIDACIÓN USUARIO
     $tmp_usuario = trim($tmp_usuario);
 
     if ($tmp_usuario == "") {
@@ -65,7 +63,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $usuario = $tmp_usuario;
     }
 
-    // VALIDACIÓN ROL
     $tmp_rol = trim($tmp_rol);
 
     if ($tmp_rol == "") {
@@ -78,7 +75,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $rol = $tmp_rol;
     }
 
-    // VALIDACIÓN CLAVE
     $tmp_clave = trim($tmp_clave);
 
     if ($tmp_clave == "") {
@@ -96,10 +92,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                      WHERE id = '$id'";
 
         if ($_conexion->query($consulta)) {
-            header("location: listado_usuarios.php");
+            header("location: panel_usuarios.php");
             exit();
         } else {
-            echo "<div class='alert alert-danger text-center'>Error al editar el usuario</div>";
+            $error_general = "Error al editar el usuario";
         }
     }
 }
@@ -108,69 +104,209 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar usuario</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Editar usuario — Footy</title>
+
+<style>
+
+:root {
+    --verde-hielo: #F7FEEF;
+    --verde-suave: #CBDDB5;
+    --verde-natural: #A8CA7E;
+    --verde-organico: #97B770;
+    --verde-profundo: rgb(96, 131, 52);
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    background:var(--verde-hielo);
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+.container{
+    width:95%;
+    max-width:520px;
+    margin:50px auto;
+}
+
+.card{
+    background:white;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 15px rgba(0,0,0,0.08);
+}
+
+h1{
+    text-align:center;
+    color:var(--verde-natural);
+    margin-bottom:25px;
+    font-size:32px;
+}
+
+.form-group{
+    margin-bottom:18px;
+}
+
+label{
+    display:block;
+    margin-bottom:8px;
+    color:var(--verde-profundo);
+    font-weight:bold;
+}
+
+input,
+select{
+    width:100%;
+    padding:12px;
+    border:1px solid var(--verde-suave);
+    border-radius:8px;
+    font-size:15px;
+    outline:none;
+}
+
+input:focus,
+select:focus{
+    border-color:var(--verde-natural);
+}
+
+.btn{
+    width:100%;
+    display:block;
+    padding:12px 16px;
+    border-radius:8px;
+    text-decoration:none;
+    background:var(--verde-natural);
+    color:white;
+    font-size:15px;
+    border:none;
+    cursor:pointer;
+    text-align:center;
+    transition:0.3s;
+}
+
+.btn:hover{
+    background:var(--verde-profundo);
+}
+
+.btn-secondary{
+    background:var(--verde-organico);
+    margin-top:12px;
+}
+
+.btn-secondary:hover{
+    background:var(--verde-profundo);
+}
+
+.error{
+    background:#f8d7da;
+    color:#842029;
+    padding:10px;
+    border-radius:8px;
+    margin-top:8px;
+    font-size:14px;
+}
+
+</style>
+
 </head>
-<body style="background-color: #f5f5dc;">
 
-<h1 class="text-center mt-4">Bienvenido a FLOOTY</h1>
+<body>
 
-<div class="container d-flex justify-content-center align-items-center vh-100">
-    <div class="p-4 rounded shadow w-100" style="max-width: 450px; background-color: #198754;">
+<?php include __DIR__ . "/nav_basico.php"; ?>
 
-        <h2 class="text-center mb-4 text-white">Editar usuario</h2>
+<main class="container">
+
+    <div class="card">
+
+        <h1>Editar usuario</h1>
+
+        <?php if(isset($error_general)): ?>
+            <div class="error">
+                <?php echo $error_general; ?>
+            </div>
+        <?php endif; ?>
 
         <form action="" method="post">
 
-            <div class="mb-3">
-                <label class="form-label text-white">Email</label>
-                <input type="text" name="email" class="form-control" value="<?= htmlspecialchars($usuario_editar["email"]) ?>">
-                <?php
-                    if (isset($err_email)) {
-                        echo "<div class='alert alert-danger mt-2'>$err_email</div>";
-                    }
-                ?>
+            <div class="form-group">
+                <label>Email</label>
+                <input 
+                    type="text" 
+                    name="email" 
+                    value="<?php echo htmlspecialchars($usuario_editar["email"]); ?>"
+                >
+
+                <?php if(isset($err_email)): ?>
+                    <div class="error">
+                        <?php echo $err_email; ?>
+                    </div>
+                <?php endif; ?>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label text-white">Usuario</label>
-                <input type="text" name="usuario" class="form-control" value="<?= htmlspecialchars($usuario_editar["usuario"]) ?>">
-                <?php
-                    if (isset($err_usuario)) {
-                        echo "<div class='alert alert-danger mt-2'>$err_usuario</div>";
-                    }
-                ?>
+            <div class="form-group">
+                <label>Usuario</label>
+                <input 
+                    type="text" 
+                    name="usuario" 
+                    value="<?php echo htmlspecialchars($usuario_editar["usuario"]); ?>"
+                >
+
+                <?php if(isset($err_usuario)): ?>
+                    <div class="error">
+                        <?php echo $err_usuario; ?>
+                    </div>
+                <?php endif; ?>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label text-white">Nueva contraseña</label>
-                <input type="password" name="clave" class="form-control" placeholder="Solo rellena si la quieres cambiar">
+            <div class="form-group">
+                <label>Nueva contraseña</label>
+                <input 
+                    type="password" 
+                    name="clave" 
+                    placeholder="Solo rellena si la quieres cambiar"
+                >
             </div>
 
-            <div class="mb-3">
-                <label class="form-label text-white">Rol</label>
-                <select name="rol" class="form-select">
+            <div class="form-group">
+                <label>Rol</label>
+                <select name="rol">
                     <option value="">-- Selecciona un rol --</option>
-                    <option value="usuario" <?php if($usuario_editar["rol"] == "usuario") echo "selected"; ?>>usuario</option>
-                    <option value="admin" <?php if($usuario_editar["rol"] == "admin") echo "selected"; ?>>admin</option>
+                    <option value="usuario" <?php if($usuario_editar["rol"] == "usuario") echo "selected"; ?>>
+                        usuario
+                    </option>
+                    <option value="admin" <?php if($usuario_editar["rol"] == "admin") echo "selected"; ?>>
+                        admin
+                    </option>
                 </select>
-                <?php
-                    if (isset($err_rol)) {
-                        echo "<div class='alert alert-danger mt-2'>$err_rol</div>";
-                    }
-                ?>
+
+                <?php if(isset($err_rol)): ?>
+                    <div class="error">
+                        <?php echo $err_rol; ?>
+                    </div>
+                <?php endif; ?>
             </div>
 
-            <div class="mb-3">
-                <input type="submit" value="Editar usuario" class="btn w-100" style="background-color: #8b4513; color: white;">
-            </div>
+            <button type="submit" class="btn">
+                Guardar cambios
+            </button>
+
         </form>
 
-        <a href="listado_usuarios.php" class="btn w-100" style="background-color: #6c757d; color: white;">Volver</a>
+        <a href="panel_usuarios.php" class="btn btn-secondary">
+            Volver
+        </a>
+
     </div>
-</div>
+
+</main>
 
 </body>
 </html>

@@ -1,104 +1,91 @@
 <?php
 session_start();
+
 error_reporting(E_ALL);
 ini_set("display_errors", 1);
 require "conexion.php";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+$err_nombre = "";
+$err_direc = "";
+$err_telf = "";
+$err_email = "";
+$err_passw = "";
+$err_passwConf = "";
+$mensaje = "";
 
-    $tmp_email = trim($_POST["email"]);
-    $tmp_usuario = trim($_POST["usuario"]);
-    $tmp_contrasena = trim($_POST["passw"]);
-    $tmp_contrasena_conf = trim($_POST["passwConf"]);
+$nombre = "";
+$direc = "";
+$telf = "";
+$email = "";
+$rol = "usuario";
+
+if($_SERVER["REQUEST_METHOD"] == "POST"){
+
+    $nombre = trim($_POST["nombre"] ?? "");
+    $direc = trim($_POST["direccion"] ?? "");
+    $telf = trim($_POST["telefono"] ?? "");
+    $email = trim($_POST["email"] ?? "");
+    $passw = $_POST["passw"] ?? "";
+    $passwConf = $_POST["passwConf"] ?? "";
+    $rol = $_POST["rol"] ?? "usuario";
 
     $errores = false;
 
-   //validacion de email
-    if ($tmp_email == "") {
+    if($nombre == ""){
+        $err_nombre = "Introduce tu nombre";
+        $errores = true;
+    }
+
+    if($direc == ""){
+        $err_direc = "Introduce una dirección";
+        $errores = true;
+    }
+
+    if($telf == ""){
+        $err_telf = "Introduce un teléfono";
+        $errores = true;
+    }
+
+    if($email == ""){
         $err_email = "Introduce un email";
         $errores = true;
-    } elseif (!filter_var($tmp_email, FILTER_VALIDATE_EMAIL)) {
+    }elseif(!filter_var($email, FILTER_VALIDATE_EMAIL)){
         $err_email = "El email no tiene un formato válido";
         $errores = true;
-    } else {
-        $email = $tmp_email;
     }
 
-  //validacion de usuario
-    if ($tmp_usuario == "") {
-        $err_usuario = "Introduce un usuario";
+    if($passw == ""){
+        $err_passw = "Introduce una contraseña";
         $errores = true;
-    } else {
-        $usuario = $tmp_usuario;
-    }
-
-   //validar contraseña
-    if ($tmp_contrasena == "") {
-        $err_contrasena = "Introduce una contraseña";
-        $errores = true;
-    } elseif (strlen($tmp_contrasena) < 6) {
-        $err_contrasena = "La contraseña debe tener al menos 6 caracteres";
-        $errores = true;
-    } else {
-        $contrasena = $tmp_contrasena;
-    }
-
-   
-    // validar confirmar contraseña
-    
-    if ($tmp_contrasena_conf == "") {
-        $err_contrasena_conf = "Confirma la contraseña";
-        $errores = true;
-    } elseif ($tmp_contrasena !== $tmp_contrasena_conf) {
-        $err_contrasena_conf = "Las contraseñas no coinciden";
+    }elseif(strlen($passw) < 6){
+        $err_passw = "La contraseña debe tener al menos 6 caracteres";
         $errores = true;
     }
 
-   
-    // Comprobar se existe 
-    
-    if (!$errores) {
+    if($passwConf == ""){
+        $err_passwConf = "Confirma tu contraseña";
+        $errores = true;
+    }elseif($passwConf !== $passw){
+        $err_passwConf = "Las contraseñas no coinciden";
+        $errores = true;
+    }
 
-        $consulta = "SELECT * FROM usuarios WHERE email = ? OR usuario = ?";
-        $stmt = $_conexion->prepare($consulta);
-        $stmt->bind_param("ss", $email, $usuario);
-        $stmt->execute();
-        $resultado = $stmt->get_result();
+    if(!$errores){
+        $usuario = $nombre;
+        $clave = password_hash($passw, PASSWORD_DEFAULT);
 
-        if ($resultado->num_rows > 0) {
-            $usuario_existente = $resultado->fetch_assoc();
+        $consulta = "INSERT INTO usuarios (email, usuario, clave, rol, nombre, telefono, direccion)
+                     VALUES ('$email','$usuario','$clave','$rol','$nombre','$telf','$direc')";
 
-            if ($usuario_existente["email"] == $email) {
-                $err_email = "Ese email ya está registrado";
-            }
-
-            if ($usuario_existente["usuario"] == $usuario) {
-                $err_usuario = "Ese usuario ya existe";
-            }
-        } else {
-            // Encriptar contraseña
-            $clave_hash = password_hash($contrasena, PASSWORD_DEFAULT);
-
-            // Rol por defecto
+        if($_conexion->query($consulta)){
+            $mensaje = "Usuario registrado correctamente";
+            $nombre = "";
+            $direc = "";
+            $telf = "";
+            $email = "";
             $rol = "usuario";
-
-            // Insertar usuario
-            $insertar = "INSERT INTO usuarios (email, usuario, clave, rol) VALUES (?, ?, ?, ?)";
-            $stmt_insert = $_conexion->prepare($insertar);
-            $stmt_insert->bind_param("ssss", $email, $usuario, $clave_hash, $rol);
-
-            if ($stmt_insert->execute()) {
-                echo "
-       <script>
-        alert('Usuario registrado correctamente');
-        window.location.href = 'login.php';
-       </script>";
-            } else {
-                echo "
-       <script>
-        alert('Error al registrar el usuario');
-       </script>";
-            }
+        }else{
+            $mensaje = "Error al registrar el usuario";
         }
     }
 }
@@ -106,75 +93,254 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <style>
-        body {
-            background-color: #F5F5DC;
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body{
+            min-height: 100vh;
+            background-image: url("../img/fondo2.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .contenedor-principal{
+            width: 100%;
+            max-width: 1100px;
+            min-height: 650px;
+            display: flex;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.25);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            backdrop-filter: blur(3px);
+        }
+
+        .lado-izquierdo{
+            width: 50%;
+            padding: 60px 50px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        .lado-izquierdo p{
+            font-size: 20px;
+            line-height: 1.6;
+            max-width: 450px;
+        }
+
+        .lado-derecho{
+            width: 50%;
+            background: rgba(0, 0, 0, 0.65);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .caja-formulario{
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .caja-formulario h2{
+            font-size: 42px;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+
+        .grupo-input{
+            margin-bottom: 25px;
+        }
+
+        .grupo-input label{
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #d9d9d9;
+        }
+
+        .grupo-input input,
+        .grupo-input select{
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid rgba(255,255,255,0.35);
+            padding: 8px 2px;
+            color: white;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .grupo-input input::placeholder{
+            color: rgba(255,255,255,0.7);
+        }
+
+        .grupo-input input:focus,
+        .grupo-input select:focus{
+            border-bottom: 2px solid #18a85b;
+        }
+
+        .boton{
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background-color: #A8CA7E;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .texto-abajo{
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #d6d6d6;
+        }
+
+        .texto-abajo a{
+            color: #A8CA7E;
+            text-decoration: none;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .mensaje-error{
+            background-color: rgba(220, 53, 69, 0.92);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 8px;
+            font-size: 13px;
+        }
+
+        .mensaje-ok{
+            background-color: rgba(40, 167, 69, 0.92);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .logo{
+            width: 120px;
+            margin-bottom: 20px;
+        }
+
+        @media(max-width: 900px){
+            .contenedor-principal{
+                flex-direction: column;
+                max-width: 500px;
+            }
+
+            .lado-izquierdo,
+            .lado-derecho{
+                width: 100%;
+            }
         }
     </style>
 </head>
-
 <body>
-    <div class="container d-flex justify-content-center align-items-center vh-100">
-        <div class="bg-success p-4 rounded shadow w-100" style="max-width: 400px;">
-            <form action="" method="post">
-                <h2 class="text-center mb-4 text-white">Regístrate en FLOOTY</h2>
 
-                <div class="mb-3">
-                    <label class="form-label text-white">Email</label>
-                    <input type="email" name="email" class="form-control" placeholder="Introduce tu email"
-                        value="<?php echo isset($tmp_email) ? htmlspecialchars($tmp_email) : ''; ?>">
-                    <?php
-                    if (isset($err_email)) {
-                        echo "<div class='alert alert-danger mt-2'>$err_email</div>";
-                    }
-                    ?>
+<div class="contenedor-principal">
+
+    <div class="lado-izquierdo">
+        <img src="../img/logo.png" class="logo" alt="logo">
+        <p>
+            Regístrate para crear una cuenta y acceder a todas las funcionalidades
+            de la plataforma.
+        </p>
+    </div>
+
+    <div class="lado-derecho">
+        <div class="caja-formulario">
+
+            <h2>Registro</h2>
+
+            <?php if($mensaje != ""): ?>
+                <div class="mensaje-ok"><?= $mensaje ?></div>
+            <?php endif; ?>
+
+            <form method="post">
+
+                <div class="grupo-input">
+                    <label>Nombre</label>
+                    <input type="text" name="nombre" value="<?= htmlspecialchars($nombre) ?>">
+                    <?php if($err_nombre != "") echo "<div class='mensaje-error'>$err_nombre</div>"; ?>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label text-white">Nombre de usuario</label>
-                    <input type="text" name="usuario" class="form-control" placeholder="Tu usuario"
-                        value="<?php echo isset($tmp_usuario) ? htmlspecialchars($tmp_usuario) : ''; ?>">
-                    <?php
-                    if (isset($err_usuario)) {
-                        echo "<div class='alert alert-danger mt-2'>$err_usuario</div>";
-                    }
-                    ?>
+                <div class="grupo-input">
+                    <label>Dirección</label>
+                    <input type="text" name="direccion" value="<?= htmlspecialchars($direc) ?>">
+                    <?php if($err_direc != "") echo "<div class='mensaje-error'>$err_direc</div>"; ?>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label text-white">Contraseña</label>
-                    <input type="password" name="passw" class="form-control" placeholder="********">
-                    <?php
-                    if (isset($err_contrasena)) {
-                        echo "<div class='alert alert-danger mt-2'>$err_contrasena</div>";
-                    }
-                    ?>
+                <div class="grupo-input">
+                    <label>Teléfono</label>
+                    <input type="text" name="telefono" value="<?= htmlspecialchars($telf) ?>">
+                    <?php if($err_telf != "") echo "<div class='mensaje-error'>$err_telf</div>"; ?>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label text-white">Confirmar contraseña</label>
-                    <input type="password" name="passwConf" class="form-control" placeholder="********">
-                    <?php
-                    if (isset($err_contrasena_conf)) {
-                        echo "<div class='alert alert-danger mt-2'>$err_contrasena_conf</div>";
-                    }
-                    ?>
+                <div class="grupo-input">
+                    <label>Email</label>
+                    <input type="text" name="email" value="<?= htmlspecialchars($email) ?>">
+                    <?php if($err_email != "") echo "<div class='mensaje-error'>$err_email</div>"; ?>
                 </div>
 
-                <button type="submit" class="btn w-100" style="background-color: #8B4513; color: white;">
-                    Registrarte
-                </button>
+                <div class="grupo-input">
+                    <label>Contraseña</label>
+                    <input type="password" name="passw">
+                    <?php if($err_passw != "") echo "<div class='mensaje-error'>$err_passw</div>"; ?>
+                </div>
+
+                <div class="grupo-input">
+                    <label>Confirmar contraseña</label>
+                    <input type="password" name="passwConf">
+                    <?php if($err_passwConf != "") echo "<div class='mensaje-error'>$err_passwConf</div>"; ?>
+                </div>
+
+                <div class="grupo-input">
+                    <label>Rol</label>
+                    <select name="rol">
+                        <option value="usuario" <?= $rol == "usuario" ? "selected" : "" ?>>usuario</option>
+                        <option value="admin" <?= $rol == "admin" ? "selected" : "" ?>>admin</option>
+                    </select>
+                </div>
+
+                <input type="submit" value="Registrarse" class="boton">
             </form>
+
+            <div class="texto-abajo">
+                ¿Ya tienes cuenta?
+                <a href="login.php">Inicia sesión</a>
+            </div>
+
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+</div>
 
+</body>
 </html>

@@ -373,7 +373,16 @@ if (!empty($favoritos_usuario)) {
         <div class="columna-izquierda">
             <div class="profile-info">
                 <div class="titulo-usuario">
-                    <img class="img-avatar" src="imagenes/avatar.jpg" alt="foto perfil">
+                    <?php
+$avatar_usuario = !empty($user_info["imagen"])
+    ? $user_info["imagen"]
+    : "imagenes/avatar.jpg";
+?>
+
+<img class="img-avatar"
+     src="<?= htmlspecialchars($avatar_usuario) ?>"
+     alt="avatar"
+     onerror="this.src='imagenes/avatar.jpg'">
                     <?= htmlspecialchars($_SESSION["usuario"]) ?>
                 </div>
 
