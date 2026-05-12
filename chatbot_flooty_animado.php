@@ -342,7 +342,6 @@
 </div>
 
 <script>
-
 function abrirChatbot(){
     document.getElementById("chatbotFlooty").style.display = "flex";
 }
@@ -351,136 +350,150 @@ function cerrarChatbot(){
     document.getElementById("chatbotFlooty").style.display = "none";
 }
 
+function limpiarTexto(texto){
+    return texto
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
 function agregarMensaje(texto, tipo){
-
     const body = document.getElementById("chatbotBody");
-
     const div = document.createElement("div");
 
-    div.className =
-        "chatbot-msg " +
-        (tipo === "user"
-            ? "chatbot-user"
-            : "chatbot-bot");
-
-    div.innerHTML = texto;
+    div.className = "chatbot-msg " + (tipo === "user" ? "chatbot-user" : "chatbot-bot");
+    div.textContent = texto;
 
     body.appendChild(div);
-
     body.scrollTop = body.scrollHeight;
 }
 
+function mostrarEscribiendo(){
+    const body = document.getElementById("chatbotBody");
+    const div = document.createElement("div");
+
+    div.className = "chatbot-msg chatbot-bot";
+    div.id = "chatbot-escribiendo";
+    div.textContent = "Flooty está escribiendo...";
+
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+}
+
+function quitarEscribiendo(){
+    const escribiendo = document.getElementById("chatbot-escribiendo");
+    if(escribiendo){
+        escribiendo.remove();
+    }
+}
+
+const respuestasFlooty = [
+    {
+        palabras: ["hola", "buenas", "hey"],
+        respuesta: "¡Hola! 👋 Soy Flooty. Puedo ayudarte con reservas, publicaciones, perfil, productos y funcionamiento de la plataforma."
+    },
+    {
+        palabras: ["reservar", "reserva", "alquilar", "alquiler"],
+        respuesta: "Para reservar un producto, entra en el producto que te interesa, selecciona las fechas disponibles y confirma la reserva."
+    },
+    {
+        palabras: ["publicar", "anuncio", "subir", "producto"],
+        respuesta: "Para publicar un producto, inicia sesión y pulsa en “Publicar producto”. Luego añade fotos, descripción, precio y disponibilidad."
+    },
+    {
+        palabras: ["mis reservas", "reservas"],
+        respuesta: "Puedes ver tus reservas desde tu cuenta, entrando en la sección “Mis reservas”."
+    },
+    {
+        palabras: ["perfil", "datos", "editar perfil", "cuenta"],
+        respuesta: "Puedes editar tu perfil desde la sección “Mis datos” dentro de tu cuenta."
+    },
+    {
+        palabras: ["favorito", "favoritos", "guardar"],
+        respuesta: "Para guardar un producto como favorito, pulsa el corazón que aparece en la publicación."
+    },
+    {
+        palabras: ["camara", "camaras", "foto", "fotos"],
+        respuesta: "En Flooty puedes alquilar cámaras, accesorios de fotografía y otros productos útiles por días."
+    },
+    {
+        palabras: ["consola", "play", "videojuego", "videojuegos"],
+        respuesta: "También puedes encontrar consolas, videojuegos y accesorios para alquilar."
+    },
+    {
+        palabras: ["ropa", "vestido", "traje"],
+        respuesta: "Flooty puede servir para alquilar ropa, vestidos, trajes o prendas para ocasiones especiales."
+    },
+    {
+        palabras: ["deporte", "bicicleta", "patinete", "surf", "pala"],
+        respuesta: "Puedes encontrar productos deportivos como bicicletas, patinetes, palas, tablas y otros artículos."
+    },
+    {
+        palabras: ["musica", "instrumento", "instrumentos", "guitarra"],
+        respuesta: "Flooty también puede incluir instrumentos musicales para alquilar de forma temporal."
+    },
+    {
+        palabras: ["seguridad", "seguro", "confianza"],
+        respuesta: "Flooty busca que los alquileres sean seguros mediante perfiles de usuario, información clara y contacto dentro de la plataforma."
+    },
+    {
+        palabras: ["contacto", "mensaje", "hablar"],
+        respuesta: "Puedes contactar con otros usuarios a través de la plataforma para resolver dudas sobre el producto."
+    },
+    {
+        palabras: ["precio", "cuanto cuesta", "tarifa"],
+        respuesta: "El precio depende del producto y del tiempo de alquiler. Cada anuncio muestra su precio correspondiente."
+    },
+    {
+        palabras: ["privacidad", "legal", "datos"],
+        respuesta: "Puedes consultar la política de privacidad y el aviso legal de Flooty desde la web."
+    },
+    {
+        palabras: ["que es flooty", "flooty", "como funciona"],
+        respuesta: "Flooty es una plataforma para alquilar objetos que otras personas no usan. La idea es ahorrar dinero, reutilizar productos y fomentar el consumo colaborativo."
+    }
+];
+
 function responderBot(pregunta){
+    const texto = limpiarTexto(pregunta);
 
-    const texto = pregunta.toLowerCase();
-
-    if(texto.includes("reserv")){
-        return "Para reservar un producto entra en el producto y selecciona las fechas.";
+    for(const item of respuestasFlooty){
+        for(const palabra of item.palabras){
+            if(texto.includes(limpiarTexto(palabra))){
+                return item.respuesta;
+            }
+        }
     }
 
-    if(texto.includes("public")){
-        return "Para publicar un anuncio inicia sesión y pulsa publicar producto.";
-    }
-
-    if(texto.includes("perfil")){
-        return "Puedes editar tu perfil desde Mis datos.";
-    }
-
-    if(texto.includes("favorito")){
-        return "Pulsa el corazón del producto para guardarlo.";
-    }
-
-    if(texto.includes("hola")){
-        return "Hola! Como estas? En que puedo ayudarte?"
-}
-
-if(texto.includes("camara")){
-    return "Puedes alquilar cámaras y accesorios.";
-}
-
-if(texto.includes("consola")){
-    return "También puedes alquilar consolas y videojuegos.";
-}
-
-if(texto.includes("ropa")){
-    return "Flooty permite alquilar muchos tipos de productos.";
-}
-
-if(texto.includes("hogar")){
-    return "Hay productos para el hogar y decoración.";
-}
-
-if(texto.includes("deporte")){
-    return "Puedes encontrar productos deportivos.";
-}
-
-if(texto.includes("musica")){
-    return "También podrían alquilarse instrumentos musicales.";
-}
-
-if(texto.includes("instrumentos")){
-    return "Puedes alquilar instrumentos musicales.";
-}
-
-if(texto.includes("fotos")){
-    return "Las fotos ayudan a mejorar tu anuncio.";
-}
-
-if(texto.includes("contacto")){
-    return "Puedes contactar mediante la plataforma.";
-}
-
-if(texto.includes("soporte")){
-    return "El soporte de Flooty te ayudará con problemas.";
-}
-
-if(texto.includes("privacidad")){
-    return "Flooty protege los datos de los usuarios.";
-}
-
-if(texto.includes("legal")){
-    return "Consulta el aviso legal y privacidad.";
-}
-
-    return "No entendí la pregunta 😅";
+    return "Solo puedo ayudarte con temas relacionados con Flooty 😊 Puedes preguntarme sobre reservas, publicaciones, productos, perfil o funcionamiento de la plataforma.";
 }
 
 function enviarChatbot(){
-
-    const input =
-        document.getElementById("chatbotInput");
-
-    const pregunta =
-        input.value.trim();
+    const input = document.getElementById("chatbotInput");
+    const pregunta = input.value.trim();
 
     if(pregunta === ""){
         return;
     }
 
     agregarMensaje(pregunta, "user");
+    input.value = "";
 
-    const respuesta =
-        responderBot(pregunta);
+    mostrarEscribiendo();
 
     setTimeout(function(){
-
+        quitarEscribiendo();
+        const respuesta = responderBot(pregunta);
         agregarMensaje(respuesta, "bot");
-
-    },300);
-
-    input.value = "";
+    }, 600);
 }
 
 function preguntaRapida(texto){
-
     document.getElementById("chatbotInput").value = texto;
-
     enviarChatbot();
 }
 
-document.getElementById("chatbotInput")
-.addEventListener("keypress", function(e){
-
+document.getElementById("chatbotInput").addEventListener("keypress", function(e){
     if(e.key === "Enter"){
         enviarChatbot();
     }
@@ -489,46 +502,26 @@ document.getElementById("chatbotInput")
 /* OJOS SIGUEN EL MOUSE */
 
 document.addEventListener("mousemove", function(e){
-
-    const mascotas =
-        document.querySelectorAll(".mascota-flooty");
+    const mascotas = document.querySelectorAll(".mascota-flooty");
 
     mascotas.forEach(function(mascota){
+        const rect = mascota.getBoundingClientRect();
 
-        const rect =
-            mascota.getBoundingClientRect();
+        const centroX = rect.left + rect.width / 2;
+        const centroY = rect.top + rect.height / 2;
 
-        const centroX =
-            rect.left + rect.width / 2;
+        const angulo = Math.atan2(
+            e.clientY - centroY,
+            e.clientX - centroX
+        );
 
-        const centroY =
-            rect.top + rect.height / 2;
+        const moverX = Math.cos(angulo) * 2;
+        const moverY = Math.sin(angulo) * 2;
 
-        const angulo =
-            Math.atan2(
-                e.clientY - centroY,
-                e.clientX - centroX
-            );
-
-        const moverX =
-            Math.cos(angulo) * 2;
-
-        const moverY =
-            Math.sin(angulo) * 2;
-
-        mascota.querySelectorAll(".pupila")
-        .forEach(function(pupila){
-
-            pupila.style.transform =
-                "translate(" +
-                moverX +
-                "px," +
-                moverY +
-                "px)";
+        mascota.querySelectorAll(".pupila").forEach(function(pupila){
+            pupila.style.transform = "translate(" + moverX + "px," + moverY + "px)";
         });
     });
 });
-
 </script>
-
 <!-- FIN CHATBOT -->
