@@ -13,7 +13,14 @@ require "sesion/conexion.php";
 
 /* Obtener usuario */
 $usuario = $_conexion->real_escape_string($_SESSION["usuario"]);
-$consulta_usuario = "SELECT id FROM usuarios WHERE usuario = '$usuario' LIMIT 1";
+
+$consulta_usuario = "
+    SELECT id 
+    FROM usuarios 
+    WHERE usuario = '$usuario'
+    LIMIT 1
+";
+
 $resultado_usuario = $_conexion->query($consulta_usuario);
 
 if (!$resultado_usuario || $resultado_usuario->num_rows == 0) {
@@ -25,6 +32,7 @@ $id_usuario = (int)$user["id"];
 
 /* Cancelar reserva */
 if (isset($_GET["cancelar"])) {
+
     $id_reserva = (int)$_GET["cancelar"];
 
     $_conexion->query("
@@ -39,14 +47,17 @@ if (isset($_GET["cancelar"])) {
     exit();
 }
 
-/* Listar reservas hechas por el usuario */
+/* Reservas */
 $consulta_reservas = "
     SELECT 
         r.*,
         p.titulo,
         p.imagenes,
         p.ciudad,
-        u.usuario AS propietario
+        u.usuario AS propietario,
+        u.email,
+        u.telefono,
+        u.direccion
     FROM reservas r
     INNER JOIN productos p ON r.id_producto = p.id
     INNER JOIN usuarios u ON r.id_propietario = u.id
@@ -59,150 +70,207 @@ $resultado_reservas = $_conexion->query($consulta_reservas);
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Mis reservas</title>
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, Helvetica, sans-serif;
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:Arial, Helvetica, sans-serif;
         }
 
-        body {
-            background-color: #f5f1e6;
-            min-height: 100vh;
+        body{
+            background-color:#f5f1e6;
+            min-height:100vh;
         }
 
-        .contenedor {
-            width: 95%;
-            max-width: 1100px;
-            margin: 30px auto;
-            background: rgba(245, 241, 230, 0.9);
-            border-radius: 20px;
-            border: 1px solid rgba(0,0,0,0.1);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            padding: 25px;
+        .contenedor{
+            width:95%;
+            max-width:1100px;
+            margin:30px auto;
+            background:rgba(245,241,230,0.9);
+            border-radius:20px;
+            border:1px solid rgba(0,0,0,0.1);
+            box-shadow:0 10px 30px rgba(0,0,0,0.15);
+            padding:25px;
         }
 
-        h1 {
-            color: #97B770;
-            margin-bottom: 25px;
-            text-align: center;
+        h1{
+            color:#97B770;
+            margin-bottom:25px;
+            text-align:center;
         }
 
-        .reserva {
-            display: grid;
-            grid-template-columns: 120px 1fr auto;
-            gap: 20px;
-            align-items: center;
-            background: white;
-            border-radius: 16px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        .reserva{
+            display:grid;
+            grid-template-columns:120px 1fr auto;
+            gap:20px;
+            align-items:center;
+            background:white;
+            border-radius:16px;
+            padding:15px;
+            margin-bottom:15px;
+            box-shadow:0 4px 12px rgba(0,0,0,0.08);
         }
 
-        .reserva img {
-            width: 120px;
-            height: 90px;
-            object-fit: cover;
-            border-radius: 12px;
-            background: #ddd;
+        .reserva img{
+            width:120px;
+            height:90px;
+            object-fit:cover;
+            border-radius:12px;
+            background:#ddd;
         }
 
-        .reserva-info h3 {
-            color: #333;
-            margin-bottom: 6px;
+        .reserva-info h3{
+            color:#333;
+            margin-bottom:6px;
         }
 
-        .reserva-info p {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 5px;
+        .reserva-info p{
+            color:#666;
+            font-size:14px;
+            margin-bottom:5px;
         }
 
-        .total {
-            font-weight: bold;
-            color: #97B770;
-            font-size: 18px;
+        .total{
+            font-weight:bold;
+            color:#97B770;
+            font-size:18px;
+            margin-top:10px;
         }
 
-        .estado {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: bold;
-            margin-top: 5px;
+        .estado{
+            display:inline-block;
+            padding:5px 12px;
+            border-radius:20px;
+            font-size:13px;
+            font-weight:bold;
+            margin-top:5px;
         }
 
-        .pendiente { background: #fff3cd; color: #856404; }
-        .aceptada { background: #d4edda; color: #155724; }
-        .rechazada { background: #f8d7da; color: #721c24; }
-        .cancelada { background: #e2e3e5; color: #383d41; }
-        .finalizada { background: #d1ecf1; color: #0c5460; }
-
-        .acciones {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+        .pendiente{
+            background:#fff3cd;
+            color:#856404;
         }
 
-        .btn-accion {
-            text-decoration: none;
-            padding: 9px 14px;
-            border-radius: 8px;
-            color: white;
-            font-size: 14px;
-            text-align: center;
-            font-weight: bold;
+        .aceptada{
+            background:#d4edda;
+            color:#155724;
         }
 
-        .btn-ver {
-            background: #97B770;
+        .pagada{
+            background:#cce5ff;
+            color:#004085;
         }
 
-        .btn-cancelar {
-            background: #dc3545;
+        .rechazada{
+            background:#f8d7da;
+            color:#721c24;
         }
 
-        .btn-volver {
-            display: inline-block;
-            margin-top: 20px;
-            background: #8c8c8c;
-            color: white;
-            padding: 12px 18px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: bold;
+        .cancelada{
+            background:#e2e3e5;
+            color:#383d41;
         }
 
-        .mensaje-vacio {
-            background: white;
-            padding: 25px;
-            border-radius: 14px;
-            text-align: center;
-            color: #666;
+        .finalizada{
+            background:#d1ecf1;
+            color:#0c5460;
         }
 
-        @media(max-width: 768px) {
-            .reserva {
-                grid-template-columns: 1fr;
+        .acciones{
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+            min-width:190px;
+        }
+
+        .btn-accion{
+            text-decoration:none;
+            padding:10px 14px;
+            border-radius:8px;
+            color:white;
+            font-size:14px;
+            text-align:center;
+            font-weight:bold;
+            border:none;
+            cursor:pointer;
+            transition:0.2s;
+        }
+
+        .btn-accion:hover{
+            opacity:0.9;
+        }
+
+        .btn-ver{
+            background:#97B770;
+        }
+
+        .btn-pagar{
+            background:#007bff;
+        }
+
+        .btn-cancelar{
+            background:#dc3545;
+        }
+
+        .btn-contactar{
+            background:#6f42c1;
+        }
+
+        .contacto-box{
+            margin-top:14px;
+            background:#f8f9fa;
+            border:1px solid rgba(0,0,0,0.08);
+            border-radius:10px;
+            padding:14px;
+        }
+
+        .contacto-box p{
+            margin-bottom:8px;
+            font-size:14px;
+        }
+
+        .btn-volver{
+            display:inline-block;
+            margin-top:20px;
+            background:#8c8c8c;
+            color:white;
+            padding:12px 18px;
+            border-radius:8px;
+            text-decoration:none;
+            font-weight:bold;
+        }
+
+        .mensaje-vacio{
+            background:white;
+            padding:25px;
+            border-radius:14px;
+            text-align:center;
+            color:#666;
+        }
+
+        @media(max-width:768px){
+
+            .reserva{
+                grid-template-columns:1fr;
             }
 
-            .reserva img {
-                width: 100%;
-                height: 180px;
+            .reserva img{
+                width:100%;
+                height:180px;
             }
 
-            .acciones {
-                flex-direction: row;
-                flex-wrap: wrap;
+            .acciones{
+                width:100%;
             }
         }
+
     </style>
 </head>
 
@@ -211,16 +279,24 @@ $resultado_reservas = $_conexion->query($consulta_reservas);
 <?php include __DIR__ . "/nav_basico.php"; ?>
 
 <div class="contenedor">
+
     <h1>Mis reservas</h1>
 
     <?php if ($resultado_reservas && $resultado_reservas->num_rows > 0): ?>
 
         <?php while ($reserva = $resultado_reservas->fetch_assoc()): ?>
+
             <?php
+
                 $imagenes = json_decode($reserva["imagenes"], true);
+
                 $imagen = "imagenes/default.jpg";
 
-                if (is_array($imagenes) && count($imagenes) > 0 && !empty($imagenes[0])) {
+                if (
+                    is_array($imagenes) &&
+                    count($imagenes) > 0 &&
+                    !empty($imagenes[0])
+                ) {
                     $imagen = $imagenes[0];
                 }
 
@@ -228,52 +304,169 @@ $resultado_reservas = $_conexion->query($consulta_reservas);
             ?>
 
             <div class="reserva">
-                <img src="<?= htmlspecialchars($imagen) ?>" alt="<?= htmlspecialchars($reserva["titulo"]) ?>">
+
+                <img
+                    src="<?= htmlspecialchars($imagen) ?>"
+                    alt="<?= htmlspecialchars($reserva["titulo"]) ?>"
+                >
 
                 <div class="reserva-info">
+
                     <h3><?= htmlspecialchars($reserva["titulo"]) ?></h3>
 
-                    <p><strong>Propietario:</strong> <?= htmlspecialchars($reserva["propietario"]) ?></p>
-                    <p><strong>Ciudad:</strong> <?= htmlspecialchars($reserva["ciudad"]) ?></p>
-                    <p><strong>Fechas:</strong> <?= htmlspecialchars($reserva["fecha_inicio"]) ?> al <?= htmlspecialchars($reserva["fecha_fin"]) ?></p>
-                    <p><strong>Días:</strong> <?= (int)$reserva["dias"] ?></p>
-                    <p><strong>Precio/día:</strong> <?= number_format((float)$reserva["precio_dia"], 2, ",", ".") ?> €</p>
-                    <p><strong>Fianza:</strong> <?= number_format((float)$reserva["fianza"], 2, ",", ".") ?> €</p>
+                    <p>
+                        <strong>Propietario:</strong>
+                        <?= htmlspecialchars($reserva["propietario"]) ?>
+                    </p>
+
+                    <p>
+                        <strong>Ciudad:</strong>
+                        <?= htmlspecialchars($reserva["ciudad"]) ?>
+                    </p>
+
+                    <p>
+                        <strong>Fechas:</strong>
+                        <?= htmlspecialchars($reserva["fecha_inicio"]) ?>
+                        al
+                        <?= htmlspecialchars($reserva["fecha_fin"]) ?>
+                    </p>
+
+                    <p>
+                        <strong>Días:</strong>
+                        <?= (int)$reserva["dias"] ?>
+                    </p>
+
+                    <p>
+                        <strong>Precio/día:</strong>
+                        <?= number_format((float)$reserva["precio_dia"], 2, ",", ".") ?> €
+                    </p>
+
+                    <p>
+                        <strong>Fianza:</strong>
+                        <?= number_format((float)$reserva["fianza"], 2, ",", ".") ?> €
+                    </p>
 
                     <div class="total">
-                        Total: <?= number_format((float)$reserva["total"], 2, ",", ".") ?> €
+                        Total:
+                        <?= number_format((float)$reserva["total"], 2, ",", ".") ?> €
                     </div>
 
                     <span class="estado <?= htmlspecialchars($estado) ?>">
                         <?= htmlspecialchars($estado) ?>
                     </span>
+
+                    <?php if ($estado == "pagada"): ?>
+
+                        <div
+                            class="contacto-box"
+                            id="contacto-<?= (int)$reserva["id"] ?>"
+                            style="display:none;"
+                        >
+
+                            <p>
+                                <strong>Email:</strong>
+                                <?= htmlspecialchars($reserva["email"] ?? "No disponible") ?>
+                            </p>
+
+                            <p>
+                                <strong>Teléfono:</strong>
+                                <?= htmlspecialchars($reserva["telefono"] ?? "No disponible") ?>
+                            </p>
+
+                            <p>
+                                <strong>Dirección:</strong>
+                                <?= htmlspecialchars($reserva["direccion"] ?? "No disponible") ?>
+                            </p>
+
+                        </div>
+
+                    <?php endif; ?>
+
                 </div>
 
                 <div class="acciones">
-                    <a class="btn-accion btn-ver" href="producto.php?id=<?= (int)$reserva["id_producto"] ?>">
+
+                    <a
+                        class="btn-accion btn-ver"
+                        href="producto.php?id=<?= (int)$reserva["id_producto"] ?>"
+                    >
                         Ver producto
                     </a>
 
+                    <?php if ($estado == "aceptada"): ?>
+
+                        <a
+                            class="btn-accion btn-pagar"
+                            href="pago.php?id_reserva=<?= (int)$reserva["id"] ?>"
+                        >
+                            Ir al pago
+                        </a>
+
+                    <?php endif; ?>
+
+                    <?php if ($estado == "pagada"): ?>
+
+                        <button
+                            type="button"
+                            class="btn-accion btn-contactar"
+                            onclick="mostrarContacto(<?= (int)$reserva['id'] ?>)"
+                        >
+                            Contactar con dueño
+                        </button>
+
+                    <?php endif; ?>
+
                     <?php if ($estado == "pendiente" || $estado == "aceptada"): ?>
-                        <a class="btn-accion btn-cancelar"
-                           href="mis_reservas.php?cancelar=<?= (int)$reserva["id"] ?>"
-                           onclick="return confirm('¿Seguro que quieres cancelar esta reserva?');">
+
+                        <a
+                            class="btn-accion btn-cancelar"
+                            href="mis_reservas.php?cancelar=<?= (int)$reserva["id"] ?>"
+                            onclick="return confirm('¿Seguro que quieres cancelar esta reserva?');"
+                        >
                             Cancelar
                         </a>
+
                     <?php endif; ?>
+
                 </div>
+
             </div>
 
         <?php endwhile; ?>
 
     <?php else: ?>
+
         <div class="mensaje-vacio">
             Todavía no hiciste ninguna reserva.
         </div>
+
     <?php endif; ?>
 
-    <a href="index.php" class="btn-volver">Volver al inicio</a>
+    <a href="index.php" class="btn-volver">
+        Volver al inicio
+    </a>
+
 </div>
+
+<script>
+
+function mostrarContacto(idReserva) {
+
+    const contacto = document.getElementById("contacto-" + idReserva);
+
+    if (!contacto) return;
+
+    if (contacto.style.display === "none") {
+
+        contacto.style.display = "block";
+
+    } else {
+
+        contacto.style.display = "none";
+    }
+}
+
+</script>
 
 </body>
 </html>

@@ -30,6 +30,7 @@ ini_set("display_errors", 1);
     <a class="card" href="panel_reservas.php"><div class="p"><strong>Reservas</strong></div></a>
     <a class="card" href="panel_categorias.php"><div class="p"><strong>Categorias</strong></div></a>
   </div>
+  
 </main>
 </body>
 </html>

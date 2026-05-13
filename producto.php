@@ -763,7 +763,7 @@ if (!is_array($imagenes) || count($imagenes) === 0) {
                 // Redirección a la pasarela de pago
                 if (json.id_reserva) {
                     setTimeout(() => {
-                        window.location.href = "pago.php?id_reserva=" + encodeURIComponent(json.id_reserva);
+                       window.location.href = "mis_reservas.php";
                     }, 700);
                 } else {
                     // Fallback: si por algún motivo no llega el id, mostramos mensaje

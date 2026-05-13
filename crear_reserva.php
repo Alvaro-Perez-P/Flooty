@@ -69,7 +69,7 @@ $producto = $res_prod->fetch_assoc();
 
 /* ── Obtener id del solicitante ── */
 $usuario_sesion   = $_conexion->real_escape_string($_SESSION['usuario']);
-$consulta_usuario = "SELECT id FROM usuarios WHERE usuario = '$usuario_sesion' LIMIT 1";
+$consulta_usuario = "SELECT id, usuario FROM usuarios WHERE usuario = '$usuario_sesion' LIMIT 1";
 $res_usuario      = $_conexion->query($consulta_usuario);
 
 if (!$res_usuario || $res_usuario->num_rows === 0) {
@@ -79,6 +79,8 @@ if (!$res_usuario || $res_usuario->num_rows === 0) {
 
 $solicitante      = $res_usuario->fetch_assoc();
 $id_solicitante   = (int)$solicitante['id'];
+$nombre_solicitante = $solicitante['usuario'];
+
 $id_propietario   = (int)$producto['id_usuario'];
 
 /* ── No puedes reservar tu propio producto ── */
@@ -118,7 +120,25 @@ $consulta_insert = "
 ";
 
 if ($_conexion->query($consulta_insert)) {
+
     $id_reserva = $_conexion->insert_id;
+
+    /* ── Crear notificación para el propietario ── */
+    $titulo_producto = $producto['titulo'] ?? 'tu producto';
+
+    $mensaje_notificacion = $_conexion->real_escape_string(
+        $nombre_solicitante . " quiere reservar tu producto: " . $titulo_producto .
+        " del " . date("d/m/Y", strtotime($fecha_inicio)) .
+        " al " . date("d/m/Y", strtotime($fecha_fin)) . "."
+    );
+
+    $_conexion->query("
+        INSERT INTO notificaciones
+            (id_usuario, id_producto, id_reserva, tipo, mensaje)
+        VALUES
+            ($id_propietario, $id_producto, $id_reserva, 'nueva_reserva', '$mensaje_notificacion')
+    ");
+
     echo json_encode([
         'ok'         => true,
         'id_reserva' => $id_reserva,
@@ -126,6 +146,7 @@ if ($_conexion->query($consulta_insert)) {
         'total'      => $total,
         'mensaje'    => 'Reserva enviada correctamente. El propietario la revisará pronto.'
     ]);
+
 } else {
     echo json_encode(['ok' => false, 'error' => 'Error al guardar la reserva: ' . $_conexion->error]);
 }

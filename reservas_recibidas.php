@@ -28,34 +28,79 @@ if (isset($_GET["accion"]) && isset($_GET["id"])) {
     $id_reserva = (int)$_GET["id"];
     $accion = $_GET["accion"];
 
+    $nuevo_estado = "";
+    $tipo_notificacion = "";
+    $mensaje_notificacion = "";
+
     if ($accion == "aceptar") {
-        $_conexion->query("
-            UPDATE reservas 
-            SET estado = 'aceptada'
-            WHERE id = $id_reserva
-            AND id_propietario = $id_usuario
-            AND estado = 'pendiente'
-        ");
+        $nuevo_estado = "aceptada";
+        $tipo_notificacion = "reserva_aceptada";
+        $mensaje_notificacion = "Tu reserva fue aceptada.";
     }
 
     if ($accion == "rechazar") {
-        $_conexion->query("
-            UPDATE reservas 
-            SET estado = 'rechazada'
-            WHERE id = $id_reserva
-            AND id_propietario = $id_usuario
-            AND estado = 'pendiente'
-        ");
+        $nuevo_estado = "rechazada";
+        $tipo_notificacion = "reserva_rechazada";
+        $mensaje_notificacion = "Tu reserva fue rechazada.";
     }
 
     if ($accion == "finalizar") {
+        $nuevo_estado = "finalizada";
+        $tipo_notificacion = "reserva_finalizada";
+        $mensaje_notificacion = "Tu reserva fue finalizada.";
+    }
+
+    if ($nuevo_estado != "") {
+
+        $condicion_estado = "pendiente";
+
+        if ($accion == "finalizar") {
+            $condicion_estado = "aceptada";
+        }
+
         $_conexion->query("
             UPDATE reservas 
-            SET estado = 'finalizada'
+            SET estado = '$nuevo_estado'
             WHERE id = $id_reserva
             AND id_propietario = $id_usuario
-            AND estado = 'aceptada'
+            AND estado = '$condicion_estado'
         ");
+
+        if ($_conexion->affected_rows > 0) {
+
+            $consulta_reserva_notif = "
+                SELECT 
+                    r.id_solicitante,
+                    r.id_producto,
+                    p.titulo
+                FROM reservas r
+                INNER JOIN productos p ON r.id_producto = p.id
+                WHERE r.id = $id_reserva
+                AND r.id_propietario = $id_usuario
+                LIMIT 1
+            ";
+
+            $resultado_reserva_notif = $_conexion->query($consulta_reserva_notif);
+
+            if ($resultado_reserva_notif && $resultado_reserva_notif->num_rows > 0) {
+                $reserva_notif = $resultado_reserva_notif->fetch_assoc();
+
+                $id_solicitante_notif = (int)$reserva_notif["id_solicitante"];
+                $id_producto_notif = (int)$reserva_notif["id_producto"];
+                $titulo_producto_notif = $reserva_notif["titulo"];
+
+                $mensaje_final = $_conexion->real_escape_string(
+                    $mensaje_notificacion . " Producto: " . $titulo_producto_notif
+                );
+
+                $_conexion->query("
+                    INSERT INTO notificaciones
+                    (id_usuario, id_producto, id_reserva, tipo, mensaje)
+                    VALUES
+                    ($id_solicitante_notif, $id_producto_notif, $id_reserva, '$tipo_notificacion', '$mensaje_final')
+                ");
+            }
+        }
     }
 
     header("location: reservas_recibidas.php");

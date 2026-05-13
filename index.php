@@ -6,7 +6,6 @@ ini_set("display_errors", 1);
 
 require 'sesion/conexion.php';
 
-
 $esta_logueado = false;
 $user_name = "";
 $user_rol = "";
@@ -176,10 +175,17 @@ $params_mas = $_GET;
 $params_mas["limite"] = $siguiente_limite;
 $url_mas = "index.php?" . http_build_query($params_mas);
 
-$avatar_usuario = "imagenes/avatar.jpg";
+/* AVATAR */
+$avatar_usuario = "";
 
 if ($esta_logueado && !empty($user_info["imagen"])) {
     $avatar_usuario = $user_info["imagen"];
+}
+
+$inicial_usuario = "U";
+
+if (!empty($user_name)) {
+    $inicial_usuario = strtoupper(substr(trim($user_name), 0, 1));
 }
 ?>
 <!DOCTYPE html>
@@ -253,6 +259,22 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
             background: white;
         }
 
+        .avatar-inicial {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background-color: #97B770;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            border: 2px solid white;
+        }
+
         .titulo-usuario {
             color: black;
             font-weight: bold;
@@ -321,34 +343,102 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
             margin-bottom: 15px;
         }
 
-        .categorias-select,
-        .filtro-select {
+        .categorias-select {
             width: 100%;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid rgba(0, 0, 0, 0.15);
+            padding: 11px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(151, 183, 112, 0.35);
             background: #fff;
             color: #333;
             outline: none;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
-        .filtros-lista {
+        .categorias-select:focus {
+            border-color: #97B770;
+            box-shadow: 0 0 0 3px rgba(151, 183, 112, 0.18);
+        }
+
+        .filtros-container {
+            background: linear-gradient(180deg, rgba(245, 241, 230, 0.95), rgba(255, 255, 255, 0.75));
+        }
+
+        .filtros-form {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
         }
 
-        .filtro-item {
+        .filtro-grupo {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .filtro-label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .filtro-select {
+            width: 100%;
+            padding: 11px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(151, 183, 112, 0.35);
+            background: white;
+            color: #333;
+            outline: none;
+        }
+
+        .filtro-select:focus {
+            border-color: #97B770;
+            box-shadow: 0 0 0 3px rgba(151, 183, 112, 0.18);
+        }
+
+        .filtro-check-card {
             display: flex;
             align-items: center;
             gap: 10px;
+            padding: 12px;
+            border-radius: 14px;
+            background: white;
+            border: 1px solid rgba(151, 183, 112, 0.25);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .filtro-check-card:hover {
+            background: rgba(151, 183, 112, 0.12);
+        }
+
+        .filtro-check-card input {
+            width: 18px;
+            height: 18px;
+            accent-color: #97B770;
+        }
+
+        .filtro-check-texto {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .filtro-check-texto strong {
             font-size: 14px;
             color: #333;
         }
 
-        .filtro-item input[type="checkbox"] {
-            accent-color: #97B770;
+        .filtro-check-texto span {
+            font-size: 12px;
+            color: #777;
+        }
+
+        .filtros-botones {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
         }
 
         .btn-filtrar {
@@ -356,10 +446,15 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
             background: #97B770;
             color: white;
             border: none;
-            padding: 10px;
-            border-radius: 10px;
+            padding: 11px;
+            border-radius: 12px;
             font-weight: bold;
             cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-filtrar:hover {
+            background: #7fa45a;
         }
 
         .btn-limpiar {
@@ -368,10 +463,16 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
             background: #8c8c8c;
             color: white;
             text-decoration: none;
-            padding: 10px;
-            border-radius: 10px;
+            padding: 11px;
+            border-radius: 12px;
             font-weight: bold;
             text-align: center;
+            transition: 0.2s;
+        }
+
+        .btn-limpiar:hover {
+            background: #747474;
+            color: white;
         }
 
         .productos-container {
@@ -603,7 +704,7 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
             .contenedor-main {
                 flex-direction: column;
             }
-
+            .columna-publicidad,
             .columna-izquierda,
             .productos-container,
             .publicidad-container {
@@ -632,6 +733,36 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
                 grid-template-columns: 1fr;
             }
         }
+
+        .columna-publicidad {
+    width: 100%;
+    max-width: 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.publicidad-secundaria {
+    height: 500px;
+}
+
+.slide-secundario {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.slide-secundario img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.slide-secundario.active {
+    opacity: 1;
+}
     </style>
 </head>
 
@@ -647,10 +778,22 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
         <?php if ($esta_logueado): ?>
             <div class="profile-info">
                 <div class="titulo-usuario">
-                    <img class="img-avatar"
-                         src="<?= htmlspecialchars($avatar_usuario) ?>"
-                         alt="avatar"
-                         onerror="this.src='imagenes/avatar.jpg'">
+
+                    <?php if (!empty($avatar_usuario)): ?>
+                        <img class="img-avatar"
+                             src="<?= htmlspecialchars($avatar_usuario) ?>"
+                             alt="avatar"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+
+                        <div class="avatar-inicial" style="display:none;">
+                            <?= htmlspecialchars($inicial_usuario) ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="avatar-inicial">
+                            <?= htmlspecialchars($inicial_usuario) ?>
+                        </div>
+                    <?php endif; ?>
+
                     <?= htmlspecialchars($user_name) ?>
                 </div>
 
@@ -701,25 +844,33 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
         </div>
 
         <div class="filtros-container">
-            <div class="titulo-bloque">Filtros</div>
+            <div class="titulo-bloque">Buscar mejor</div>
 
-            <form method="GET" action="index.php">
+            <form method="GET" action="index.php" class="filtros-form">
                 <input type="hidden" name="categoria" value="<?= (int)$categoria ?>">
 
-                <div class="filtros-lista">
-                    <label class="filtro-item">
-                        <input type="checkbox" name="disponible_hoy" value="1" <?= $disponible_hoy ? "checked" : "" ?>>
-                        Disponible hoy
-                    </label>
+                <label class="filtro-check-card">
+                    <input type="checkbox" name="disponible_hoy" value="1" <?= $disponible_hoy ? "checked" : "" ?>>
+
+                    <div class="filtro-check-texto">
+                        <strong>Disponible hoy</strong>
+                        <span>Ver solo productos libres ahora</span>
+                    </div>
+                </label>
+
+                <div class="filtro-grupo">
+                    <label class="filtro-label">Ordenar por precio</label>
 
                     <select name="precio" class="filtro-select">
-                        <option value="" <?= $precio_orden == "" ? "selected" : "" ?>>Precio</option>
-                        <option value="menor" <?= $precio_orden == "menor" ? "selected" : "" ?>>Menor a mayor</option>
-                        <option value="mayor" <?= $precio_orden == "mayor" ? "selected" : "" ?>>Mayor a menor</option>
+                        <option value="" <?= $precio_orden == "" ? "selected" : "" ?>>Más recientes</option>
+                        <option value="menor" <?= $precio_orden == "menor" ? "selected" : "" ?>>Precio: menor a mayor</option>
+                        <option value="mayor" <?= $precio_orden == "mayor" ? "selected" : "" ?>>Precio: mayor a menor</option>
                     </select>
+                </div>
 
+                <div class="filtros-botones">
                     <button type="submit" class="btn-filtrar">Aplicar filtros</button>
-                    <a href="index.php" class="btn-limpiar">Limpiar filtros</a>
+                    <a href="index.php" class="btn-limpiar">Quitar filtros</a>
                 </div>
             </form>
         </div>
@@ -812,6 +963,8 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
         <?php endif; ?>
     </div>
 
+   <div class="columna-publicidad">
+
     <div class="publicidad-container">
         <div class="slide active">
             <img src="imagenes/banner1.png" alt="banner 1">
@@ -825,6 +978,22 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
             <img src="imagenes/banner3.png" alt="banner 3">
         </div>
     </div>
+
+    <div class="publicidad-container publicidad-secundaria">
+        <div class="slide-secundario active">
+            <img src="imagenes/camping.png" alt="banner 4">
+        </div>
+
+        <div class="slide-secundario">
+            <img src="imagenes/equipoDePlaya.png" alt="banner 5">
+        </div>
+
+        <div class="slide-secundario">
+            <img src="imagenes/equipoDeFotografia.png" alt="banner 6">
+        </div>
+    </div>
+
+</div>
 
 </div>
 
@@ -854,6 +1023,15 @@ if ($esta_logueado && !empty($user_info["imagen"])) {
         index = (index + 1) % slides.length;
         slides[index].classList.add("active");
     }, 2000);
+
+      let slidesSecundarios = document.querySelectorAll(".slide-secundario");
+    let indexSecundario = 0;
+
+    setInterval(() => {
+        slidesSecundarios[indexSecundario].classList.remove("active");
+        indexSecundario = (indexSecundario + 1) % slidesSecundarios.length;
+        slidesSecundarios[indexSecundario].classList.add("active");
+    }, 2500);
 </script>
 
 </body>
