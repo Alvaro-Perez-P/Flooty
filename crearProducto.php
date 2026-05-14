@@ -120,67 +120,84 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $rutas_imagenes = [];
 
-if (!$errores) {
-    $carpeta_destino = __DIR__ . "/imagenes/productos/";
+    if (!$errores) {
+        $carpeta_destino = __DIR__ . "/imagenes/productos/";
 
-    if (!is_dir($carpeta_destino)) {
-        if (!mkdir($carpeta_destino, 0777, true)) {
-            $err_imagen = "No se pudo crear la carpeta de imágenes";
+        if (!is_dir($carpeta_destino)) {
+            if (!mkdir($carpeta_destino, 0777, true)) {
+                $err_imagen = "No se pudo crear la carpeta de imágenes";
+                $errores = true;
+            }
+        }
+
+        if (!$errores && !is_writable($carpeta_destino)) {
+            $err_imagen = "La carpeta de imágenes no tiene permisos de escritura";
             $errores = true;
         }
-    }
 
-    if (!$errores && !is_writable($carpeta_destino)) {
-        $err_imagen = "La carpeta de imágenes no tiene permisos de escritura";
-        $errores = true;
-    }
+        $permitidos = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
 
-    $permitidos = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+        if (!$errores) {
+            for ($i = 0; $i < count($_FILES["imagenes"]["name"]); $i++) {
 
-    if (!$errores) {
-        for ($i = 0; $i < count($_FILES["imagenes"]["name"]); $i++) {
+                if ($_FILES["imagenes"]["name"][$i] == "") {
+                    continue;
+                }
 
-            if ($_FILES["imagenes"]["name"][$i] == "") {
-                continue;
+                if ($_FILES["imagenes"]["error"][$i] !== 0) {
+                    $err_imagen = "Error al subir una de las imágenes. Código: " . $_FILES["imagenes"]["error"][$i];
+                    $errores = true;
+                    break;
+                }
+
+                $tmp_imagen = $_FILES["imagenes"]["tmp_name"][$i];
+                $nombre_original = $_FILES["imagenes"]["name"][$i];
+
+                if (!is_uploaded_file($tmp_imagen)) {
+                    $err_imagen = "Uno de los archivos subidos no es válido";
+                    $errores = true;
+                    break;
+                }
+
+                $tipo_imagen = mime_content_type($tmp_imagen);
+
+                if (!in_array($tipo_imagen, $permitidos)) {
+                    $err_imagen = "Solo se permiten imágenes JPG, JPEG, PNG o WEBP";
+                    $errores = true;
+                    break;
+                }
+
+                /* CONVERTIR A WEBP */
+                $nombre_unico = time() . "_" . $i . "_" . uniqid() . ".webp";
+                $ruta_destino = $carpeta_destino . $nombre_unico;
+
+                // Crear imagen GD según el tipo MIME original
+                $imagen_gd = match($tipo_imagen) {
+                    "image/jpeg", "image/jpg" => imagecreatefromjpeg($tmp_imagen),
+                    "image/png"               => imagecreatefrompng($tmp_imagen),
+                    "image/webp"              => imagecreatefromwebp($tmp_imagen),
+                    default                   => null
+                };
+
+                if (!$imagen_gd) {
+                    $err_imagen = "No se pudo procesar una de las imágenes";
+                    $errores = true;
+                    break;
+                }
+
+                // Guardar como WebP con calidad 85
+                if (!imagewebp($imagen_gd, $ruta_destino, 85)) {
+                    $err_imagen = "No se pudo convertir la imagen a WebP";
+                    $errores = true;
+                    imagedestroy($imagen_gd);
+                    break;
+                }
+
+                imagedestroy($imagen_gd); // Liberar memoria
+                $rutas_imagenes[] = "imagenes/productos/" . $nombre_unico;
             }
-
-            if ($_FILES["imagenes"]["error"][$i] !== 0) {
-                $err_imagen = "Error al subir una de las imágenes. Código: " . $_FILES["imagenes"]["error"][$i];
-                $errores = true;
-                break;
-            }
-
-            $tmp_imagen = $_FILES["imagenes"]["tmp_name"][$i];
-            $nombre_original = $_FILES["imagenes"]["name"][$i];
-
-            if (!is_uploaded_file($tmp_imagen)) {
-                $err_imagen = "Uno de los archivos subidos no es válido";
-                $errores = true;
-                break;
-            }
-
-            $tipo_imagen = mime_content_type($tmp_imagen);
-
-            if (!in_array($tipo_imagen, $permitidos)) {
-                $err_imagen = "Solo se permiten imágenes JPG, JPEG, PNG o WEBP";
-                $errores = true;
-                break;
-            }
-
-            $extension = strtolower(pathinfo($nombre_original, PATHINFO_EXTENSION));
-            $nombre_unico = time() . "_" . $i . "_" . uniqid() . "." . $extension;
-            $ruta_destino = $carpeta_destino . $nombre_unico;
-
-            if (!move_uploaded_file($tmp_imagen, $ruta_destino)) {
-                $err_imagen = "No se pudo mover la imagen a la carpeta destino";
-                $errores = true;
-                break;
-            }
-
-            $rutas_imagenes[] = "imagenes/productos/" . $nombre_unico;
         }
     }
-}
 
     if (!$errores) {
         $titulo_seguro = $_conexion->real_escape_string($titulo);

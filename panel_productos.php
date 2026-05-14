@@ -231,7 +231,7 @@ h2 {
 
     <div class="top">
         <h2>Productos publicados</h2>
-        <a href="crear_producto.php" class="btn">+ Crear producto</a>
+        <a href="panel_admin.php" class="btn"><-volver</a>
     </div>
 
     <div class="tabla-wrapper">
